@@ -1,4 +1,4 @@
-mimport { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Send, Volume2, Paperclip, X } from "lucide-react";
 
 function pickMaleVoice() {
