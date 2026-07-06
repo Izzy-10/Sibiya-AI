@@ -10,3 +10,20 @@
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
+  </body>
+<button id="theme-toggle">🌓 Toggle Theme</button>
+<script>
+  // On load: use saved theme, or fall back to system default
+  const saved = localStorage.getItem('theme');
+  const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const theme = saved || (systemPrefersDark ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme', theme);
+
+  // Toggle on click
+  document.getElementById('theme-toggle').addEventListener('click', () => {
+    const current = document.documentElement.getAttribute('data-theme');
+    const next = current === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+  });
+</script>
