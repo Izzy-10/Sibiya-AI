@@ -1,14 +1,13 @@
 body {
-  font-size: 50px; /* mobile-friendly minimum */
+  font-size: 16px; /* mobile-friendly minimum */
 }
 
 .chat-input-bar input,
 .chat-messages {
-  font-size: 10rem; /* scales with body, don't hardcode small px values */
-}
-.chat-input-bar {
+  font-size: 1rem; /* scales with body, don't hardcode small px values */
+}.chat-input-bar {
   max-width: 500px;
-  width: 50%;
+  width: 90%;
   margin: 0.5rem auto;
   padding: 0.5rem 0.75rem;
   border-radius: 24px;
@@ -20,5 +19,5 @@ body {
 .chat-input-bar input {
   flex: 1;
   min-width: 0;
-  font-size: 29rem;
+  font-size: 1rem;
 }
