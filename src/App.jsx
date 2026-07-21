@@ -101,11 +101,12 @@ export default function App() {
       e.preventDefault();
       sendMessage();
     }
-}
-return (
+  }
+
+  return (
     <div
       style={{ fontFamily: "system-ui, -apple-system, 'Segoe UI', sans-serif" }}
-      className="w-full h-screen flex flex-col bg-[#0B0B0C] text-[#F5F1E8]"
+      className="w-full h-[100dvh] flex flex-col bg-[#0B0B0C] text-[#F5F1E8]"
     >
       <style>{`
         .sg { font-family: 'Trebuchet MS', 'Arial Narrow', sans-serif; }
@@ -190,7 +191,11 @@ return (
           </div>
         )}
       </div>
-      <div className="px-5 py-4 border-t border-[#1E1D1A]">
+
+      <div
+        className="px-5 py-4 border-t border-[#1E1D1A]"
+        style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}
+      >
         {pendingFile && (
           <div className="flex items-center gap-2 mb-2 text-[12px] text-[#C9A44C] bg-[#161514] border border-[#232019] rounded-full px-3 py-1.5 w-fit">
             <span>📎 {pendingFile.name}</span>
