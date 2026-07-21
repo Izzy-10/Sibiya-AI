@@ -1,35 +1,24 @@
+body {
+  font-size: 16px; /* mobile-friendly minimum */
+}
+
+.chat-input-bar input,
+.chat-messages {
+  font-size: 1rem; /* scales with body, don't hardcode small px values */
+}
 .chat-input-bar {
+  max-width: 500px;
+  width: 90%;
+  margin: 0.5rem auto;
+  padding: 0.5rem 0.75rem;
+  border-radius: 24px;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  margin: 0.5rem;
-  background: #1a1a1a;
-  border: 1px solid #C9A44C;
-  border-radius: 24px; /* pill, but not oversized */
-  max-width: 100%;
-  box-sizing: border-box;
 }
 
 .chat-input-bar input {
   flex: 1;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: #fff;
+  min-width: 0;
   font-size: 1rem;
-  padding: 0.5rem 0;
-  min-width: 0; /* prevents overflow */
-}
-
-.chat-input-bar button {
-  flex-shrink: 0;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: #C9A44C;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
