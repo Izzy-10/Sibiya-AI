@@ -1,41 +1,10 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sibiya AI</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
-</html>
-  </body>
-<button id="theme-toggle">🌓 Toggle Theme</button>
-<script>
-  // On load: use saved theme, or fall back to system default
-  const saved = localStorage.getItem('theme');
-  const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const theme = saved || (systemPrefersDark ? 'dark' : 'light');
-  document.documentElement.setAttribute('data-theme', theme);
+<input type="file" ...>
+<input type="text" placeholder="Ask Sibiya AI...">
+<button>send</button>
+<button id="theme-toggle">Toggle Theme</button>
 
-  // Toggle on click
-  document.getElementById('theme-toggle').addEventListener('click', () => {
-    const current = document.documentElement.getAttribute('data-theme');
-    const next = current === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', next);
-    localStorage.setItem('theme', next);
-  });
-</script>
-<body>
-  <header class="chat-header">...</header>
-
-  <main class="chat-messages">
-    <!-- messages go here -->
-  </main>
-
-  <footer class="chat-input-bar">
-    <input type="text" placeholder="Ask Sibiya AI...">
-    <button>➤</button>
-  </footer>
-</body>
+<!-- later in the file -->
+<div class="chat-input-bar">
+  <input type="text" placeholder="Ask Sibiya AI...">
+  <button>➤</button>
+</div>
