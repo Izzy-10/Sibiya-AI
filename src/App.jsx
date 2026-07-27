@@ -264,6 +264,14 @@ export default function App() {
             <Send size={14} />
           </button>
         </div>
+        <div className="text-center mt-3">
+          <a
+            href="/privacy.html"
+            className="text-[10px] text-[#5C5850] hover:text-[#C9A44C] tracking-wide transition-colors"
+          >
+            Privacy Policy
+          </a>
+        </div>
       </div>
     </div>
   );
