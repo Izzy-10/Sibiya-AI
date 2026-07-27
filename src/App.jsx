@@ -112,8 +112,8 @@ export default function App() {
         .sg { font-family: 'Trebuchet MS', 'Arial Narrow', sans-serif; }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-thumb { background: #2A2823; border-radius: 3px; }
-        @keyframes pulse-gold { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
-        .dot { animation: pulse-gold 1.4s infinite ease-in-out; }
+        @keyframes pulse-red { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+        .dot { animation: pulse-red 1.4s infinite ease-in-out; }
         .dot:nth-child(2) { animation-delay: 0.2s; }
         .dot:nth-child(3) { animation-delay: 0.4s; }
       `}</style>
@@ -152,7 +152,8 @@ export default function App() {
           >
             voice {voiceOn ? "on" : "off"}
           </button>
-          <div className="text-[10px] uppercase tracking-widest text-[#C9A44C] border border-[#C9A44C]/40 rounded-full px-2 py-1">
+          <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-[#C9A44C] border border-[#C9A44C]/40 rounded-full px-2 py-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#A13D2D]" />
             online
           </div>
         </div>
@@ -184,9 +185,9 @@ export default function App() {
         {loading && (
           <div className="flex justify-start">
             <div className="bg-[#161514] border border-[#232019] rounded-2xl rounded-bl-sm px-4 py-3 flex gap-1">
-              <span className="dot w-1.5 h-1.5 rounded-full bg-[#C9A44C]" />
-              <span className="dot w-1.5 h-1.5 rounded-full bg-[#C9A44C]" />
-              <span className="dot w-1.5 h-1.5 rounded-full bg-[#C9A44C]" />
+              <span className="dot w-1.5 h-1.5 rounded-full bg-[#A13D2D]" />
+              <span className="dot w-1.5 h-1.5 rounded-full bg-[#A13D2D]" />
+              <span className="dot w-1.5 h-1.5 rounded-full bg-[#A13D2D]" />
             </div>
           </div>
         )}
