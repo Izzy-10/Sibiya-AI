@@ -89,6 +89,20 @@ export default function Lobby({ user, authError, initialCode, onEnterRoom, onSol
           </div>
         </div>
 
+               {user && !user.isAnonymous && (
+          <div className="flex items-center justify-between rounded-xl border border-[#232019] bg-[#161514] px-3 py-2 text-[12px]">
+            <span className="truncate text-[#D8D2C4]">
+              Signed in as {user.displayName || user.email}
+            </span>
+            <button
+              onClick={onSignOut}
+              className="text-[#C9A44C] uppercase tracking-widest text-[10px] ml-3 shrink-0"
+            >
+              Sign out
+            </button>
+          </div>
+        )}
+
         {authError && (
           <div className="rounded-xl border border-[#A13D2D]/60 bg-[#A13D2D]/10 px-3 py-2 text-[12px] text-[#F5F1E8]">
             {authError}
