@@ -11,7 +11,7 @@ import {
   serverTimestamp,
   setDoc,
 } from "firebase/firestore";
-import { db } from "./firebase.js";
+import { db, getToken } from "./firebase.js";
 
 const MENTION = /@sibiya\b/i;
 
@@ -73,10 +73,11 @@ export default function Room({ user, code, name, title, onBack }) {
     setAiBusy(true);
     try {
       const recent = messagesRef.current.slice(-20).map(m => ({ name: m.name, text: m.text }));
+      const token = await getToken();
       const res = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+      body: JSON.stringify({
           mode: "room",
           title: meta?.title || title || "",
           asker,
