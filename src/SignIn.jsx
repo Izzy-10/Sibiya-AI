@@ -16,7 +16,7 @@ export default function SignIn({ onBack }) {
       const quiet = ["auth/popup-closed-by-user", "auth/cancelled-popup-request"];
       if (!quiet.includes(e?.code)) {
         setError(
-          "Couldn't sign in. Check that Google sign-in is enabled in Firebase and that this site's domain is authorized."
+          "Couldn't sign in (" + (e?.code || "unknown error") + "). Check that Google sign-in is enabled in Firebase and that this site's domain is authorized."
         );
       }
     } finally {
