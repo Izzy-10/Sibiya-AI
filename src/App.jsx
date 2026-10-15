@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, Volume2, Paperclip, X } from "lucide-react";
+import { getToken } from "./firebase.js";
 
 function pickMaleVoice() {
   const voices = window.speechSynthesis?.getVoices() || [];
@@ -77,10 +78,11 @@ export default function App() {
     setLoading(true);
 
     try {
+      const token = await getToken();
       const response = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+         body: JSON.stringify({
           messages: newMessages.map(m => ({ role: m.role, content: m.content })),
         }),
       });
