@@ -163,7 +163,10 @@ export default function Lobby({ user, authError, initialCode, onEnterRoom, onSol
           </button>
         </div>
 
-        <div className="text-center pt-2">
+              <div className="text-center pt-2 space-x-4">
+          <a href="/about.html" className="text-[10px] text-[#5C5850] hover:text-[#C9A44C] tracking-wide">
+            About
+          </a>
           <a href="/privacy.html" className="text-[10px] text-[#5C5850] hover:text-[#C9A44C] tracking-wide">
             Privacy Policy
           </a>
