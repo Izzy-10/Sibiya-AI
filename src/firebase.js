@@ -1,66 +1,45 @@
-import { useState, useEffect } from "react";
-import App from "./App.jsx";
-import Lobby from "./Lobby.jsx";
-import Room from "./Room.jsx";
-import SignIn from "./SignIn.jsx";
-import { watchAuth, signOutUser } from "./firebase.js";
+import { initializeApp } from "firebase/app";
+import {
+  getAuth,
+  signInAnonymously,
+  onAuthStateChanged,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut,
+} from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
-export default function Root() {
-  const [user, setUser] = useState(null);
-  const [authError, setAuthError] = useState("");
-  const [view, setView] = useState("lobby");
-  const [room, setRoom] = useState(null);
-  const [initialCode] = useState(
-    () => new URLSearchParams(window.location.search).get("room") || ""
-  );
+const firebaseConfig = {
+  apiKey: "AIzaSyByw2cQQXcWjVl2ESpiPJ32-6VLETvBOx0",
+  authDomain: "sibiya-ai.firebaseapp.com",
+  projectId: "sibiya-ai",
+  storageBucket: "sibiya-ai.firebasestorage.app",
+  messagingSenderId: "583063810870",
+  appId: "1:583063810870:web:5f0f98ad215c8fe15b7997",
+};
 
-  useEffect(() => {
-    return watchAuth(setUser, e =>
-      setAuthError(
-        "Couldn't connect to Sibiya chat (" +
-          (e?.code || "unknown error") +
-          "). Check that Anonymous sign-in is enabled in Firebase."
-      )
-    );
-  }, []);
+const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const db = getFirestore(app);
 
-  useEffect(() => {
-    const onPop = () => setView("lobby");
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
-  }, []);
+export function watchAuth(onUser, onError) {
+  return onAuthStateChanged(auth, u => {
+    if (u) onUser(u);
+    else signInAnonymously(auth).catch(onError);
+  });
+}
 
-  function go(nextView, nextRoom = null) {
-    window.history.pushState({}, "");
-    setRoom(nextRoom);
-    setView(nextView);
-  }
+export async function signInWithGoogle() {
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: "select_account" });
+  return signInWithPopup(auth, provider);
+}
 
-  if (view === "solo") {
-    if (user && !user.isAnonymous) return <App />;
-    return <SignIn onBack={() => window.history.back()} />;
-  }
+export function signOutUser() {
+  return signOut(auth);
+}
 
-  if (view === "room" && room && user) {
-    return (
-      <Room
-        user={user}
-        code={room.code}
-        name={room.name}
-        title={room.title}
-        onBack={() => window.history.back()}
-      />
-    );
-  }
-
-  return (
-    <Lobby
-      user={user}
-      authError={authError}
-      initialCode={initialCode}
-      onEnterRoom={(code, name, title) => go("room", { code, name, title })}
-      onSolo={() => go("solo")}
-      onSignOut={signOutUser}
-    />
-  );
+export async function getToken() {
+  if (!auth.currentUser) throw new Error("not signed in");
+  return auth.currentUser.getIdToken();
 }
