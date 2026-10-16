@@ -15,9 +15,11 @@ export default function Root() {
   );
 
   useEffect(() => {
-    return watchAuth(setUser, () =>
+      return watchAuth(setUser, e =>
       setAuthError(
-        "Couldn't connect to Sibiya chat. Check that Anonymous sign-in is enabled in Firebase."
+        "Couldn't connect to Sibiya chat (" +
+          (e?.code || "unknown error") +
+          "). Check that Anonymous sign-in is enabled in Firebase."
       )
     );
   }, []);
