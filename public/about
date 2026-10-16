@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>About — Sibiya AI</title>
+<style>
+  body {
+    margin: 0;
+    background: #0B0B0C;
+    color: #F5F1E8;
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    line-height: 1.6;
+  }
+  .wrap {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 48px 20px 80px;
+  }
+  .hero {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  .hero svg { margin-bottom: 14px; }
+  h1 {
+    font-size: 22px;
+    letter-spacing: 3px;
+    margin: 0;
+  }
+  .tagline {
+    font-size: 11px;
+    color: #8A8580;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin: 8px 0 18px;
+  }
+  .lead {
+    font-size: 15px;
+    color: #D8D2C4;
+    max-width: 460px;
+    margin: 0 auto 22px;
+  }
+  .btn {
+    display: inline-block;
+    background: #C9A44C;
+    color: #0B0B0C;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 13px;
+    padding: 11px 22px;
+    border-radius: 12px;
+  }
+  .accent {
+    height: 2px;
+    width: 60px;
+    background: #A13D2D;
+    border: none;
+    margin: 0 auto 8px;
+  }
+  h2 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #C9A44C;
+    margin: 44px 0 12px;
+  }
+  p, li {
+    font-size: 14px;
+    color: #D8D2C4;
+  }
+  ul { padding-left: 20px; }
+  li { margin-bottom: 6px; }
+  .card {
+    background: #161514;
+    border: 1px solid #232019;
+    border-left: 4px solid #A13D2D;
+    border-radius: 14px;
+    padding: 16px 18px;
+    margin-top: 12px;
+  }
+  .card h3 {
+    margin: 0 0 6px;
+    font-size: 16px;
+  }
+  .muted { color: #8A8580; font-size: 12px; }
+  .quote {
+    font-style: italic;
+    color: #C9A44C;
+    text-align: center;
+    margin: 44px 0 0;
+  }
+  footer {
+    margin-top: 60px;
+    padding-top: 20px;
+    border-top: 1px solid #1E1D1A;
+    text-align: center;
+    font-size: 12px;
+    color: #5C5850;
+  }
+  a { color: #C9A44C; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+
+    <div class="hero">
+      <svg width="64" height="64" viewBox="0 0 176 176" aria-label="Sibiya AI logo">
+        <defs>
+          <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#E8C97A"/>
+            <stop offset="55%" stop-color="#C9A44C"/>
+            <stop offset="100%" stop-color="#9C7C33"/>
+          </linearGradient>
+        </defs>
+        <rect width="176" height="176" rx="38" fill="#141311" stroke="#C9A44C" stroke-width="1.5" opacity="0.6"/>
+        <g stroke="#8A8580" stroke-width="3" opacity="0.9">
+          <line x1="42" y1="140" x2="118" y2="46"/>
+          <line x1="126" y1="140" x2="64" y2="40"/>
+        </g>
+        <path d="M118 46 L124 39 L130 46 Z" fill="#D8D2C4"/>
+        <path d="M64 40 L59 33 L69 33 Z" fill="#D8D2C4"/>
+        <path d="M118 46 L138 53 L118 58 Z" fill="#A13D2D"/>
+        <path d="M88 50 C 110 50 120 74 120 92 C 120 120 105 140 88 147 C 71 140 56 120 56 92 C 56 74 66 50 88 50 Z" fill="#EDE6D6" stroke="#0B0B0C" stroke-width="1.5"/>
+        <line x1="88" y1="54" x2="88" y2="143" stroke="#0B0B0C" stroke-width="1.5"/>
+        <g fill="#0B0B0C">
+          <rect x="80" y="62" width="16" height="5"/>
+          <rect x="80" y="72" width="16" height="5"/>
+          <rect x="80" y="82" width="16" height="5"/>
+          <rect x="80" y="92" width="16" height="5"/>
+          <rect x="80" y="102" width="16" height="5"/>
+          <rect x="80" y="112" width="16" height="5"/>
+          <rect x="80" y="122" width="16" height="5"/>
+        </g>
+        <g transform="translate(112,100) scale(0.22)">
+          <path d="M 176 152 L 304 152 L 304 196 L 208 196 L 208 220 L 304 220 L 304 328 L 176 328 L 176 284 L 272 284 L 272 260 L 176 260 Z" fill="url(#g)"/>
+        </g>
+      </svg>
+      <h1>SIBIYA AI</h1>
+      <div class="tagline">Umoya Wesizwe SakwaZulu</div>
+      <p class="lead">An AI assistant made in South Africa, rooted in Zulu culture. Chat on your own, or bring friends into a group and call on Sibiya AI when you need it.</p>
+      <a class="btn" href="/">Open Sibiya AI</a>
+    </div>
+
+    <hr class="accent" />
+
+    <h2>About Sibiya AI</h2>
+    <p>Sibiya AI began as a personal project and grew into a small chat space where people and an AI assistant can talk together. It is built to feel like home for South African users: it understands isiZulu, greets you warmly, and keeps a calm, grounded tone.</p>
+    <ul>
+      <li><strong>Solo chat.</strong> Sign in with Google and talk to Sibiya AI one-on-one. It greets you by name.</li>
+      <li><strong>Group chats.</strong> Create a group, share the invite link or code, and chat with friends in real time. Type @sibiya to bring the AI into the conversation.</li>
+      <li><strong>isiZulu and English.</strong> Write in isiZulu and it replies in isiZulu. Write in English and it replies in English, with the odd sawubona.</li>
+      <li><strong>Reads PDFs.</strong> Attach a PDF in solo chat and ask questions about it.</li>
+      <li><strong>Talks back.</strong> Tap the speaker icon to hear a reply read aloud.</li>
+    </ul>
+
+    <h2>The name and the look</h2>
+    <p><em>Umoya wesizwe sakwaZulu</em> is the tagline. Roughly, it means the spirit of the people of KwaZulu. The logo is a Zulu shield (<em>ihawu</em>) with a beaded spine and crossed spears, with a gold S for Sibiya. The black, gold and red palette and the geometric borders draw on Zulu tradition.</p>
+
+    <h2>How it is built</h2>
+    <ul>
+      <li>React and Vite for the app, hosted on Vercel</li>
+      <li>Firebase for Google sign-in and group chat</li>
+      <li>Claude, made by Anthropic, as the AI behind the replies</li>
+    </ul>
+    <p class="muted">Group messages are stored so everyone in the group can see them. Read the <a href="/privacy.html">Privacy Policy</a> for details.</p>
+
+    <h2>About the builder</h2>
+    <div class="card">
+      <h3>Sizwe Sicelimilo Sibiya</h3>
+      <p class="muted">Frontend developer student at WeThinkCode_ Durban · from Jozini, KwaZulu-Natal</p>
+      <p>Sizwe builds digital products that solve real problems for South Africans. He is the founder of <strong>DevMzansi</strong>, a free community for young South African developers, and co-founder of <strong>Sim Wear</strong>, a South African streetwear and lifestyle e-commerce brand.</p>
+      <p>He works with HTML, CSS and JavaScript, is learning Python and Java, and uses Git, GitHub, VS Code and Figma. His goals are to build his own startup, work at a top tech company, and freelance on his own terms.</p>
+      <p>He is open to collaborations, remote or in Durban.</p>
+      <p>
+        <a href="https://github.com/Izzy-10" target="_blank" rel="noopener">GitHub</a> ·
+        <a href="https://izzy-10.github.io" target="_blank" rel="noopener">Portfolio</a>
+      </p>
+    </div>
+
+    <p class="quote">Good food, good music, a great movie, solid sleep. Peaceful and intentional.</p>
+
+    <footer>
+      <a href="/">Sibiya AI</a> · <a href="/privacy.html">Privacy Policy</a>
+    </footer>
+
+  </div>
+</body>
+</html>
