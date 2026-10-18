@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Support — Sibiya AI</title>
+<style>
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: #0B0B0C;
+    color: #F5F1E8;
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    line-height: 1.6;
+  }
+  .wrap {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 48px 20px 80px;
+  }
+  .hero { text-align: center; margin-bottom: 36px; }
+  .hero svg { margin-bottom: 14px; }
+  h1 { font-size: 22px; letter-spacing: 3px; margin: 0; }
+  .tagline {
+    font-size: 11px;
+    color: #8A8580;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin: 8px 0 18px;
+  }
+  .lead { font-size: 15px; color: #D8D2C4; max-width: 460px; margin: 0 auto 22px; }
+  .btn {
+    display: inline-block;
+    background: #C9A44C;
+    color: #0B0B0C;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 13px;
+    padding: 11px 22px;
+    border-radius: 12px;
+  }
+  .accent { height: 2px; width: 60px; background: #A13D2D; border: none; margin: 0 auto 8px; }
+  h2 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #C9A44C;
+    margin: 40px 0 14px;
+  }
+  a { color: #C9A44C; }
+
+  details {
+    border: 1px solid #232019;
+    background: #161514;
+    border-radius: 14px;
+    margin-bottom: 10px;
+  }
+  details[open] { border-color: rgba(201,164,76,0.45); }
+  summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 16px 18px;
+    font-size: 15px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::after {
+    content: "›";
+    font-size: 24px;
+    line-height: 1;
+    color: #C9A44C;
+    transition: transform 0.2s;
+  }
+  details[open] summary::after { transform: rotate(90deg); }
+  .ans { padding: 2px 18px 16px; border-top: 1px solid #1E1D1A; }
+  .ans p, .ans li { font-size: 14px; color: #D8D2C4; }
+  .ans ul, .ans ol { padding-left: 20px; margin: 10px 0; }
+  .ans li { margin-bottom: 6px; }
+  .ans h4 {
+    margin: 16px 0 4px;
+    font-size: 12px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #E07A66;
+  }
+  .note {
+    border-left: 3px solid #A13D2D;
+    background: #0F0F10;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+  }
+  .muted { color: #8A8580; font-size: 12px; }
+
+  .site-foot { margin-top: 64px; padding-top: 32px; border-top: 1px solid #232019; }
+  .foot-name {
+    font-family: Georgia, serif;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #F5F1E8;
+  }
+  .foot-name span { color: #C9A44C; }
+  .foot-blurb { margin: 10px 0 12px; color: #8A8580; font-size: 14px; }
+  .foot-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 28px; }
+  .foot-cols h4 {
+    margin: 0 0 12px;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #C9A44C;
+  }
+  .foot-cols a {
+    display: block;
+    margin-bottom: 10px;
+    font-size: 14px;
+    color: #F5F1E8;
+    text-decoration: none;
+  }
+  .foot-cols a:hover { color: #C9A44C; }
+  .foot-bar {
+    margin-top: 32px;
+    padding-top: 18px;
+    border-top: 1px solid #1E1D1A;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 6px 16px;
+    font-size: 12px;
+    color: #5C5850;
+  }
+  .totop {
+    position: fixed;
+    right: 18px;
+    bottom: max(18px, env(safe-area-inset-bottom));
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #C9A44C;
+    color: #0B0B0C;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+
+    <div class="hero">
+      <svg width="64" height="64" viewBox="0 0 176 176" aria-label="Sibiya AI logo">
+        <defs>
+          <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#E8C97A"/>
+            <stop offset="55%" stop-color="#C9A44C"/>
+            <stop offset="100%" stop-color="#9C7C33"/>
+          </linearGradient>
+        </defs>
+        <rect width="176" height="176" rx="38" fill="#141311" stroke="#C9A44C" stroke-width="1.5" opacity="0.6"/>
+        <g stroke="#8A8580" stroke-width="3" opacity="0.9">
+          <line x1="42" y1="140" x2="118" y2="46"/>
+          <line x1="126" y1="140" x2="64" y2="40"/>
+        </g>
+        <path d="M118 46 L124 39 L130 46 Z" fill="#D8D2C4"/>
+        <path d="M64 40 L59 33 L69 33 Z" fill="#D8D2C4"/>
+        <path d="M118 46 L138 53 L118 58 Z" fill="#A13D2D"/>
+        <path d="M88 50 C 110 50 120 74 120 92 C 120 120 105 140 88 147 C 71 140 56 120 56 92 C 56 74 66 50 88 50 Z" fill="#EDE6D6" stroke="#0B0B0C" stroke-width="1.5"/>
+        <line x1="88" y1="54" x2="88" y2="143" stroke="#0B0B0C" stroke-width="1.5"/>
+        <g fill="#0B0B0C">
+          <rect x="80" y="62" width="16" height="5"/>
+          <rect x="80" y="72" width="16" height="5"/>
+          <rect x="80" y="82" width="16" height="5"/>
+          <rect x="80" y="92" width="16" height="5"/>
+          <rect x="80" y="102" width="16" height="5"/>
+          <rect x="80" y="112" width="16" height="5"/>
+          <rect x="80" y="122" width="16" height="5"/>
+        </g>
+        <g transform="translate(112,100) scale(0.22)">
+          <path d="M 176 152 L 304 152 L 304 196 L 208 196 L 208 220 L 304 220 L 304 328 L 176 328 L 176 284 L 272 284 L 272 260 L 176 260 Z" fill="url(#g)"/>
+        </g>
+      </svg>
+      <h1>SIBIYA AI SUPPORT</h1>
+      <div class="tagline">Umoya Wesizwe SakwaZulu</div>
+      <p class="lead">Answers, tips and help for using Sibiya AI. Tap a topic to open it.</p>
+      <a class="btn" href="/">Open Sibiya AI</a>
+    </div>
+
+    <hr class="accent" />
+
+    <h2>Help topics</h2>
+
+    <details>
+      <summary>Get started with Sibiya AI</summary>
+      <div class="ans">
+        <ol>
+          <li>Open <a href="/">sibiya-ai.vercel.app</a>.</li>
+          <li>Type your name in the <strong>Your name</strong> box. Other people see it in group chats.</li>
+          <li>Choose how to chat:
+            <ul>
+              <li><strong>Start solo chat</strong> to talk to Sibiya AI on your own. You sign in with Google first.</li>
+              <li><strong>Create group</strong> to start a chat with friends, or <strong>Join group</strong> if someone gave you a code.</li>
+            </ul>
+          </li>
+          <li>In a group, tap <strong>Invite</strong> to share the link. Your friends open it, type their name and tap Join.</li>
+          <li>To bring the AI into a group conversation, type <strong>@sibiya</strong> in your message.</li>
+        </ol>
+        <p class="note">You can write in isiZulu or English. Sibiya AI replies in the language you use.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Connectors</summary>
+      <div class="ans">
+        <p>Connectors let an AI work with other apps, such as a cloud drive or a calendar.</p>
+        <p><strong>Sibiya AI does not have connectors yet.</strong></p>
+        <h4>What works today</h4>
+        <ul>
+          <li>Attach a PDF in solo chat with the paperclip and ask questions about it.</li>
+          <li>Share a group invite through any app (WhatsApp, SMS, email) using the Invite button.</li>
+        </ul>
+        <p>If there is an app you would like Sibiya AI to work with, tell us. See <a href="#contact">Contact and reporting a problem</a>.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Usage and limits</summary>
+      <div class="ans">
+        <ul>
+          <li><strong>Cost:</strong> there is no payment or subscription in the app right now.</li>
+          <li><strong>Budget:</strong> Sibiya AI runs on a limited budget. If it stops answering for a while, try again later.</li>
+          <li><strong>Solo chat:</strong> needs Google sign-in. In a very long chat, the AI looks at the most recent messages only.</li>
+          <li><strong>Groups:</strong> each message can be up to 1,000 characters, and names up to 24 characters. When you call @sibiya, the AI reads the last 20 messages. A group shows the latest 100 messages.</li>
+          <li><strong>PDFs:</strong> PDF files only, in solo chat. Keep them under about 3 MB. Larger files may fail to send.</li>
+          <li><strong>Reply length:</strong> replies are kept short and chat-sized. Ask a follow-up if you want more detail.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details>
+      <summary>Troubleshooting</summary>
+      <div class="ans">
+        <h4>The Create group and Join group buttons say "Connecting..."</h4>
+        <p>Check your internet connection and reload the page. If it keeps happening, try a private or incognito window.</p>
+
+        <h4>Google sign-in does not open</h4>
+        <p>Allow pop-ups for sibiya-ai.vercel.app in your browser, then tap Continue with Google again. If you see a message with a code in brackets, send it to us.</p>
+
+        <h4>"Something broke on my end"</h4>
+        <p>Wait a few seconds and send your message again. If it keeps failing, the usage budget may be used up for now. Try again later.</p>
+
+        <h4>The AI does not answer in a group</h4>
+        <p>It only replies when your message contains <strong>@sibiya</strong>. Type it exactly like that.</p>
+
+        <h4>I cannot hear the voice</h4>
+        <p>In solo chat, check that <strong>Voice</strong> is on and tap the speaker icon next to a reply. Phones only play audio after you tap. Check that your phone volume is up.</p>
+
+        <h4>My PDF will not read</h4>
+        <p>Only PDF files work, and they should be under about 3 MB. Scanned pages that are only photos may not be readable.</p>
+
+        <h4>The page looks old or broken</h4>
+        <p>Refresh it, or open the site in a private window. Phones sometimes keep an old copy.</p>
+
+        <h4>My message did not send in a group</h4>
+        <p>Check your connection and try again. Your text stays in the box if it fails.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Sibiya AI for Education</summary>
+      <div class="ans">
+        <p>Sibiya AI can be a study partner. It can:</p>
+        <ul>
+          <li>Explain a topic in simple words, in English or isiZulu.</li>
+          <li>Quiz you or help you plan revision.</li>
+          <li>Summarise notes you attach as a PDF in solo chat.</li>
+          <li>Explain code and help you find mistakes, which is useful for coding students.</li>
+          <li>Help you practise writing, then give feedback on your draft.</li>
+        </ul>
+        <h4>Good to know</h4>
+        <ul>
+          <li>It can be wrong. Check important facts with your textbook or teacher.</li>
+          <li>Use it to learn, not to hand in as your own work. Follow your school or university rules.</li>
+          <li>Sibiya AI is not linked to any school, and there are no classroom tools yet.</li>
+        </ul>
+        <p>A study group works well: create a group for your class, invite classmates, and type @sibiya when you need an explanation.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Features and capabilities</summary>
+      <div class="ans">
+        <ul>
+          <li><strong>isiZulu and English:</strong> write in either and the reply comes in the same language.</li>
+          <li><strong>Solo chat:</strong> one-on-one with Sibiya AI after signing in with Google. It greets you by name.</li>
+          <li><strong>Group chats:</strong> live messages between people, with an invite link. Call the AI with @sibiya.</li>
+          <li><strong>PDF reading:</strong> attach a PDF in solo chat and ask about it.</li>
+          <li><strong>Voice replies:</strong> tap the speaker icon to hear a reply read aloud.</li>
+        </ul>
+        <h4>What it cannot do yet</h4>
+        <ul>
+          <li>Browse the web or look up live news.</li>
+          <li>Open photos or other file types. PDFs only.</li>
+          <li>Remember earlier solo chats once you close the page.</li>
+          <li>Take actions in other apps.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details>
+      <summary>Conversation management</summary>
+      <div class="ans">
+        <ul>
+          <li><strong>Solo chat is not saved.</strong> Closing or refreshing the page clears it. Copy anything you want to keep.</li>
+          <li><strong>Group chats are saved.</strong> Tap the back arrow to leave. Come back with the same code or invite link and the history is still there.</li>
+          <li><strong>Start fresh:</strong> refresh a solo chat, or create a new group for a new topic.</li>
+          <li><strong>Invites:</strong> anyone with the link or code can join, so share it only with people you trust.</li>
+          <li><strong>Your name:</strong> it is saved in your browser. Change it any time on the first screen.</li>
+          <li><strong>Sign out:</strong> go back to the first screen and tap Sign out.</li>
+          <li><strong>Deleting a group:</strong> there is no delete button yet. Contact us and we will remove it.</li>
+          <li><strong>Replay a reply:</strong> tap the speaker icon next to it.</li>
+        </ul>
+      </div>
+    </details>
+
+    <h2>More help topics</h2>
+
+    <details>
+      <summary>Groups and invites</summary>
+      <div class="ans">
+        <ol>
+          <li>On the first screen, type your name and optionally a group name, then tap <strong>Create group</strong>.</li>
+          <li>Tap <strong>Invite</strong> at the top of the group to share the link, or give friends the code shown under the group name.</li>
+          <li>Friends who open the link type their name and tap <strong>Join group</strong>. If they only have the code, they type it in the Join with a code box.</li>
+          <li>Anyone in the group can type <strong>@sibiya</strong> to ask the AI something. It answers the person who asked.</li>
+        </ol>
+        <p class="note">Anyone with the code can read the group and post in it. Do not share private information there.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Account and sign-in</summary>
+      <div class="ans">
+        <ul>
+          <li><strong>Group chats</strong> need no account. Your device gets an anonymous ID automatically.</li>
+          <li><strong>Solo chat</strong> uses Google sign-in, so Sibiya AI knows who is typing. It receives your name and email from Google and never sees your Google password.</li>
+          <li>To switch accounts, tap Sign out on the first screen, then sign in again.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details>
+      <summary>Privacy and your data</summary>
+      <div class="ans">
+        <ul>
+          <li>Solo chat messages are sent to the AI to get a reply and are not saved by Sibiya AI.</li>
+          <li>Group messages are stored so everyone in the group can see them.</li>
+          <li>We do not sell your data or use your chats for advertising.</li>
+        </ul>
+        <p>Read the full <a href="/privacy.html">Privacy Policy</a>.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Safety and community rules</summary>
+      <div class="ans">
+        <ul>
+          <li>Be respectful. No harassment, hate or threats.</li>
+          <li>Do not share passwords, ID numbers, bank details or other private information in a group.</li>
+          <li>Sibiya AI can make mistakes. Do not rely on it alone for medical, legal or money decisions.</li>
+          <li>If you or someone else is in danger, contact your local emergency services. In South Africa, dial 112 from a cell phone.</li>
+          <li>To report a group or a message, see Contact below. We can remove a group.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details>
+      <summary>Tips for better answers</summary>
+      <div class="ans">
+        <ul>
+          <li>Be specific. "Explain photosynthesis for a Grade 10 test" works better than "explain photosynthesis".</li>
+          <li>Say the language you want, for example "answer in isiZulu".</li>
+          <li>Add context, such as who it is for, how long it should be, or what you already tried.</li>
+          <li>Ask follow-ups to go deeper, shorter or simpler.</li>
+          <li>With a PDF, ask a clear question, such as "summarise page 2 in five points".</li>
+          <li>In a group, put your request after @sibiya, for example "@sibiya settle this: which taxi route is faster?"</li>
+          <li>Check important facts yourself.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details id="contact">
+      <summary>Contact and reporting a problem</summary>
+      <div class="ans">
+        <p>Found a bug, want a group removed, or have an idea? Reach out on TikTok:
+          <a href="https://www.tiktok.com/@sizwesibiya7" target="_blank" rel="noopener">@sizwesibiya7</a>.</p>
+        <h4>Please include</h4>
+        <ul>
+          <li>What you were trying to do.</li>
+          <li>What you expected, and what happened instead.</li>
+          <li>Any message or code shown on screen, or a screenshot.</li>
+          <li>Your phone and browser, for example "Samsung, Chrome".</li>
+        </ul>
+        <p class="muted">Last updated: October 2026</p>
+      </div>
+    </details>
+
+    <div class="site-foot">
+      <div class="foot-name">SIBIYA <span>AI</span></div>
+      <p class="foot-blurb">Made in South Africa, rooted in Zulu culture. Chat on your own or bring friends into a group.</p>
+      <a class="btn" href="/">Open Sibiya AI →</a>
+
+      <div class="foot-cols">
+        <div>
+          <h4>Pages</h4>
+          <a href="/">Sibiya AI</a>
+          <a href="/about.html">About</a>
+          <a href="/support.html">Support</a>
+          <a href="/privacy.html">Privacy</a>
+        </div>
+        <div>
+          <h4>Connect</h4>
+          <a href="https://www.tiktok.com/@sizwesibiya7" target="_blank" rel="noopener">Follow me on TikTok</a>
+        </div>
+      </div>
+
+      <div class="foot-bar">
+        <span>© 2026 Sibiya AI. All rights reserved.</span>
+        <span>Built by Sizwe Sicelimilo Sibiya · Durban, South Africa</span>
+      </div>
+    </div>
+    <a class="totop" href="#top" aria-label="Back to top">↑</a>
+
+  </div>
+</body>
+</html>
