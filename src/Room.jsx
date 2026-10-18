@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Send, Share2, Check } from "lucide-react";
+import { ArrowLeft, Send, Share2, Check, Smile } from "lucide-react";
 import {
   addDoc,
+  arrayRemove,
+  arrayUnion,
   collection,
   doc,
   limitToLast,
@@ -10,10 +12,20 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  updateDoc,
 } from "firebase/firestore";
 import { db, getToken } from "./firebase.js";
 
 const MENTION = /@sibiya\b/i;
+
+const REACTIONS = [
+  { key: "like", emoji: "👍" },
+  { key: "love", emoji: "❤️" },
+  { key: "laugh", emoji: "😂" },
+  { key: "wow", emoji: "😮" },
+  { key: "sad", emoji: "😢" },
+  { key: "pray", emoji: "🙏" },
+];
 
 function timeOf(m) {
   const d = m.createdAt?.toDate?.();
@@ -28,6 +40,7 @@ export default function Room({ user, code, name, title, onBack }) {
   const [aiBusy, setAiBusy] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [pickerFor, setPickerFor] = useState(null);
   const scrollRef = useRef(null);
   const messagesRef = useRef([]);
 
@@ -77,7 +90,7 @@ export default function Room({ user, code, name, title, onBack }) {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
-      body: JSON.stringify({
+        body: JSON.stringify({
           mode: "room",
           title: meta?.title || title || "",
           asker,
@@ -121,6 +134,18 @@ export default function Room({ user, code, name, title, onBack }) {
       return;
     }
     if (MENTION.test(text) && !aiBusy) askAI(name);
+  }
+
+  async function react(m, key) {
+    setPickerFor(null);
+    const already = Array.isArray(m.reactions?.[key]) && m.reactions[key].includes(user.uid);
+    try {
+      await updateDoc(doc(db, "chats", code, "messages", m.id), {
+        ["reactions." + key]: already ? arrayRemove(user.uid) : arrayUnion(user.uid),
+      });
+    } catch {
+      setError("Couldn't add your reaction. Try again.");
+    }
   }
 
   function handleKey(e) {
@@ -195,9 +220,26 @@ export default function Room({ user, code, name, title, onBack }) {
         {messages.map(m => {
           const mine = m.uid === user.uid;
           const ai = !!m.ai;
+          const counts = REACTIONS.map(r => ({
+            ...r,
+            users: Array.isArray(m.reactions?.[r.key]) ? m.reactions[r.key] : [],
+          })).filter(r => r.users.length > 0);
+          const reactBtn = (
+            <button
+              onClick={() => setPickerFor(p => (p === m.id ? null : m.id))}
+              aria-label="Add reaction"
+              className="w-6 h-6 shrink-0 mb-5 rounded-full flex items-center justify-center text-[#5C5850] hover:text-[#C9A44C] transition-colors"
+            >
+              <Smile size={15} />
+            </button>
+          );
           return (
-            <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-              <div className="max-w-[82%]">
+            <div
+              key={m.id}
+              className={`flex ${mine ? "justify-end" : "justify-start"} items-end gap-1.5`}
+            >
+              {mine && reactBtn}
+              <div className={`max-w-[78%] flex flex-col ${mine ? "items-end" : "items-start"}`}>
                 {!mine && (
                   <div
                     className={`text-[10px] uppercase tracking-widest mb-1 ${
@@ -218,10 +260,48 @@ export default function Room({ user, code, name, title, onBack }) {
                 >
                   {m.text}
                 </div>
+
+                {pickerFor === m.id && (
+                  <div className="flex gap-1 mt-1.5 bg-[#161514] border border-[#232019] rounded-full px-2 py-1 w-fit">
+                    {REACTIONS.map(r => (
+                      <button
+                        key={r.key}
+                        onClick={() => react(m, r.key)}
+                        className="text-[18px] leading-none px-1 py-0.5 rounded-full hover:bg-[#232019]"
+                      >
+                        {r.emoji}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {counts.length > 0 && (
+                  <div className={`flex flex-wrap gap-1 mt-1 ${mine ? "justify-end" : ""}`}>
+                    {counts.map(r => {
+                      const iReacted = r.users.includes(user.uid);
+                      return (
+                        <button
+                          key={r.key}
+                          onClick={() => react(m, r.key)}
+                          className={`flex items-center gap-1 text-[12px] px-2 py-0.5 rounded-full border transition-colors ${
+                            iReacted
+                              ? "border-[#C9A44C] bg-[#C9A44C]/15 text-[#F5F1E8]"
+                              : "border-[#232019] bg-[#161514] text-[#D8D2C4]"
+                          }`}
+                        >
+                          <span>{r.emoji}</span>
+                          <span>{r.users.length}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
                 <div className={`text-[10px] text-[#5C5850] mt-1 ${mine ? "text-right" : ""}`}>
                   {timeOf(m)}
                 </div>
               </div>
+              {!mine && reactBtn}
             </div>
           );
         })}
