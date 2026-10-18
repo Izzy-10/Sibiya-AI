@@ -177,8 +177,8 @@ export default function Lobby({ user, authError, initialCode, onEnterRoom, onSol
             <span className="w-2 h-2 rounded-full bg-[#A13D2D]" />
             Available for projects &amp; collaborations
           </p>
-          <a
-            href="/about.html"
+                    <a href="/about.html">About</a>
+          <a href="/support.html">Support</a>
             className="inline-block mt-4 bg-[#C9A44C] text-[#0B0B0C] rounded-xl px-5 py-2.5 text-[13px] font-semibold"
           >
             About Sibiya AI →
