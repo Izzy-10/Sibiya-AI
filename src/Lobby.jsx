@@ -28,6 +28,11 @@ function saveName(n) {
   } catch {}
 }
 
+function niceName(u) {
+  if (!u.displayName) return u.email || "";
+  return u.displayName.replace(/(^|\s)(\p{L})/gu, (m, a, b) => a + b.toUpperCase());
+}
+
 const inputCls =
   "w-full bg-[#0B0B0C] border border-[#232019] rounded-xl px-3 py-2.5 text-[14px] outline-none placeholder:text-[#5C5850] focus:border-[#C9A44C]/60 transition-colors";
 const goldBtn =
@@ -80,55 +85,19 @@ export default function Lobby({ user, authError, initialCode, onEnterRoom, onSol
         paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))",
       }}
     >
-      
-
-               {user && !user.isAnonymous && (
-          <div className="flex items-center justify-between rounded-xl border border-[#232019] bg-[#161514] px-3 py-2 text-[12px]">
-            <span className="truncate text-[#D8D2C4]">
-                           Signed in as {user.displayName ? user.displayName.replace(/(^|\s)(\p{L})/gu, (m, a, b) => a + b.toUpperCase()) : user.email}
-            </span>
-            <button        <div className="pt-8 border-t border-[#232019]">
-          <div className="font-bold text-[18px] tracking-[0.15em]" style={{ fontFamily: "Georgia, serif" }}>
-            SIBIYA <span className="text-[#C9A44C]">AI</span>
-          </div>
-          <p className="text-[13px] text-[#8A8580] mt-2">
-            Made in South Africa, rooted in Zulu culture. Chat on your own or bring friends into a group.
-          </p>
-          <p className="flex items-center gap-2 text-[12px] text-[#D8D2C4] mt-3">
-            <span className="w-2 h-2 rounded-full bg-[#A13D2D]" />
-            Available for projects &amp; collaborations
-          </p>
-          <a
-            href="/about.html"
-            className="inline-block mt-4 bg-[#C9A44C] text-[#0B0B0C] rounded-xl px-5 py-2.5 text-[13px] font-semibold"
-          >
-            About Sibiya AI →
-          </a>
-
-          <div className="grid grid-cols-2 gap-6 mt-8">
-            <div className="space-y-2.5">
-              <div className="text-[10px] uppercase tracking-widest text-[#C9A44C]">Pages</div>
-              <a href="/about.html" className="block text-[13px] hover:text-[#C9A44C]">About</a>
-              <a href="/privacy.html" className="block text-[13px] hover:text-[#C9A44C]">Privacy</a>
-            </div>
-            <div className="space-y-2.5">
-              <div className="text-[10px] uppercase tracking-widest text-[#C9A44C]">Connect</div>
-              <a
-                href="https://www.tiktok.com/@sizwesibiya7"
-                target="_blank"
-                rel="noopener"
-                className="block text-[13px] hover:text-[#C9A44C]"
-              >
-                Follow me on TikTok
-              </a>
-            </div>
-          </div>
-
-          <div className="mt-8 pt-4 border-t border-[#1E1D1A] text-[11px] text-[#5C5850] space-y-1">
-            <div>© 2026 Sibiya AI. All rights reserved.</div>
-            <div>Built by Sizwe Sicelimilo Sibiya · Durban, South Africa</div>
+      <div className="max-w-md mx-auto px-5 py-8 space-y-4">
+        <div className="flex items-center gap-3 mb-2">
+          <Logo size={44} />
+          <div>
+            <div className="font-bold text-[16px] tracking-tight">SIBIYA AI</div>
+            <div className="text-[10px] text-[#8A8580] tracking-wide">Umoya Wesizwe SakwaZulu</div>
           </div>
         </div>
+
+        {user && !user.isAnonymous && (
+          <div className="flex items-center justify-between rounded-xl border border-[#232019] bg-[#161514] px-3 py-2 text-[12px]">
+            <span className="truncate text-[#D8D2C4]">Signed in as {niceName(user)}</span>
+            <button
               onClick={onSignOut}
               className="text-[#C9A44C] uppercase tracking-widest text-[10px] ml-3 shrink-0"
             >
@@ -197,15 +166,49 @@ export default function Lobby({ user, authError, initialCode, onEnterRoom, onSol
           </button>
         </div>
 
-              <div className="text-center pt-2 space-x-4">
-          <a href="/about.html" className="text-[10px] text-[#5C5850] hover:text-[#C9A44C] tracking-wide">
-            About
+        <div className="pt-8 border-t border-[#232019]">
+          <div className="font-bold text-[18px] tracking-[0.15em]" style={{ fontFamily: "Georgia, serif" }}>
+            SIBIYA <span className="text-[#C9A44C]">AI</span>
+          </div>
+          <p className="text-[13px] text-[#8A8580] mt-2">
+            Made in South Africa, rooted in Zulu culture. Chat on your own or bring friends into a group.
+          </p>
+          <p className="flex items-center gap-2 text-[12px] text-[#D8D2C4] mt-3">
+            <span className="w-2 h-2 rounded-full bg-[#A13D2D]" />
+            Available for projects &amp; collaborations
+          </p>
+          <a
+            href="/about.html"
+            className="inline-block mt-4 bg-[#C9A44C] text-[#0B0B0C] rounded-xl px-5 py-2.5 text-[13px] font-semibold"
+          >
+            About Sibiya AI →
           </a>
-          <a href="/privacy.html" className="text-[10px] text-[#5C5850] hover:text-[#C9A44C] tracking-wide">
-            Privacy Policy
-          </a>
+
+          <div className="grid grid-cols-2 gap-6 mt-8">
+            <div className="space-y-2.5">
+              <div className="text-[10px] uppercase tracking-widest text-[#C9A44C]">Pages</div>
+              <a href="/about.html" className="block text-[13px] hover:text-[#C9A44C]">About</a>
+              <a href="/privacy.html" className="block text-[13px] hover:text-[#C9A44C]">Privacy</a>
+            </div>
+            <div className="space-y-2.5">
+              <div className="text-[10px] uppercase tracking-widest text-[#C9A44C]">Connect</div>
+              <a
+                href="https://www.tiktok.com/@sizwesibiya7"
+                target="_blank"
+                rel="noopener"
+                className="block text-[13px] hover:text-[#C9A44C]"
+              >
+                Follow me on TikTok
+              </a>
+            </div>
+          </div>
+
+          <div className="mt-8 pt-4 border-t border-[#1E1D1A] text-[11px] text-[#5C5850] space-y-1">
+            <div>© 2026 Sibiya AI. All rights reserved.</div>
+            <div>Built by Sizwe Sicelimilo Sibiya · Durban, South Africa</div>
+          </div>
         </div>
       </div>
     </div>
   );
-}
+      }
