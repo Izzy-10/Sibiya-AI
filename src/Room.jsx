@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, Send, Share2, Check, Smile } from "lucide-react";
 import {
-  addDoc,
+   addDoc,
+  deleteDoc,
   arrayRemove,
   arrayUnion,
   collection,
