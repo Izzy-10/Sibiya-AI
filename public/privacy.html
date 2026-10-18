@@ -15,13 +15,18 @@
   .wrap {
     max-width: 640px;
     margin: 0 auto;
-    padding: 48px 20px 80px;
+    padding: 36px 20px 80px;
+  }
+  .top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
   }
   header {
     display: flex;
     align-items: center;
     gap: 12px;
-    margin-bottom: 8px;
   }
   .mark {
     width: 34px;
@@ -35,18 +40,29 @@
     color: #C9A44C;
     font-weight: 700;
     font-family: Georgia, serif;
+    text-decoration: none;
   }
   h1 {
     font-size: 15px;
     letter-spacing: 1px;
     margin: 0;
   }
+  .home {
+    color: #C9A44C;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+    border: 1px solid rgba(201,164,76,0.5);
+    border-radius: 999px;
+    padding: 7px 16px;
+    white-space: nowrap;
+  }
   .tagline {
     font-size: 10px;
     color: #8A8580;
     letter-spacing: 2px;
     text-transform: uppercase;
-    margin: 2px 0 40px;
+    margin: 10px 0 36px;
   }
   h2 {
     font-size: 13px;
@@ -62,6 +78,7 @@
   ul {
     padding-left: 20px;
   }
+  li { margin-bottom: 6px; }
   .updated {
     font-size: 12px;
     color: #5C5850;
@@ -69,6 +86,11 @@
     padding-top: 20px;
     border-top: 1px solid #1E1D1A;
   }
+  .foot-links {
+    margin-top: 14px;
+    font-size: 13px;
+  }
+  .foot-links a { margin-right: 16px; }
   .accent {
     height: 2px;
     width: 60px;
@@ -81,12 +103,13 @@
 </head>
 <body>
   <div class="wrap">
-    <header>
-      <div class="mark">S</div>
-      <div>
+    <div class="top">
+      <header>
+        <a class="mark" href="/" aria-label="Sibiya AI home">S</a>
         <h1>SIBIYA AI</h1>
-      </div>
-    </header>
+      </header>
+      <a class="home" href="/">← Home</a>
+    </div>
     <div class="tagline">Umoya Wesizwe SakwaZulu</div>
     <hr class="accent" />
 
@@ -95,6 +118,7 @@
 
     <h2>Solo chat</h2>
     <ul>
+      <li><strong>Google sign-in.</strong> Solo chat needs you to sign in with Google. Sibiya AI receives your name and email address from Google so it can greet you and know who is typing. It never sees your Google password. Google Firebase keeps a record of your sign-in (your account ID, name and email) so you stay signed in.</li>
       <li>Messages you type in a solo chat are sent to Anthropic's Claude API to generate a reply. They are not saved by Sibiya AI and disappear when you close or refresh the page.</li>
       <li>PDFs you attach in a solo chat are sent to the Claude API so it can read them. They are not saved or logged separately.</li>
     </ul>
@@ -103,8 +127,8 @@
     <ul>
       <li><strong>Group messages are stored.</strong> Everything sent in a group, including Sibiya AI's replies, is saved in a Google Firebase database so everyone in the group can see it.</li>
       <li><strong>Anyone with a group's code or invite link can read it and post in it.</strong> Only share the code with people you trust, and don't post private or sensitive information in a group.</li>
-      <li><strong>What is saved with each message:</strong> the text, the display name you typed, the time, and an anonymous ID created automatically for your device.</li>
-      <li><strong>No account needed.</strong> We never ask for an email address, phone number, or password.</li>
+      <li><strong>What is saved with each message:</strong> the text, the display name you typed, the time, an ID for your device (an anonymous ID, or your Google account ID if you are signed in), and any emoji reactions added to it.</li>
+      <li><strong>No account needed to join a group.</strong> We never ask for a phone number or password.</li>
       <li><strong>Removal:</strong> there is no in-app way to delete group messages yet. To ask for a group or its messages to be removed, contact us using the details below.</li>
     </ul>
 
@@ -120,7 +144,7 @@
     <h2>Who handles your data</h2>
     <ul>
       <li><strong>Anthropic</strong> processes the messages and documents sent to Claude. See <a href="https://www.anthropic.com/legal/privacy" target="_blank" rel="noopener">anthropic.com/legal/privacy</a>.</li>
-      <li><strong>Google Firebase</strong> stores group messages and creates the anonymous ID. See <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">policies.google.com/privacy</a>.</li>
+      <li><strong>Google</strong> provides sign-in, and Google Firebase stores group messages, sign-in records and the anonymous device ID. See <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">policies.google.com/privacy</a>.</li>
       <li><strong>Vercel</strong> hosts the app.</li>
     </ul>
 
@@ -131,9 +155,16 @@
     </ul>
 
     <h2>Contact</h2>
-    <p>Sibiya AI is built and maintained by Sizwe Sicelimpilo Sibiya. For questions about this policy or to request removal of a group, reach out through the DevMzansi community channels.</p>
+    <p>Sibiya AI is built and maintained by Sizwe Sicelimpilo Sibiya. For questions about this policy, or to ask for a group to be removed, email <a href="mailto:ssibiya026m@ai.wethinkcode.co.za">ssibiya026m@ai.wethinkcode.co.za</a> or reach out on TikTok: <a href="https://www.tiktok.com/@sizwesibiya7" target="_blank" rel="noopener">@sizwesibiya7</a>.</p>
 
-    <div class="updated">Last updated: October 2026</div>
+    <div class="updated">
+      Last updated: October 2026
+      <div class="foot-links">
+        <a href="/">Home</a>
+        <a href="/about.html">About</a>
+        <a href="/support.html">Support</a>
+      </div>
+    </div>
   </div>
 </body>
 </html>
