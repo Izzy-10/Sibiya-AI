@@ -149,6 +149,15 @@ export default function Room({ user, code, name, title, onBack }) {
     }
   }
 
+   async function removeMessage(m) {
+    if (!window.confirm("Delete this message for everyone?")) return;
+    try {
+      await deleteDoc(doc(db, "chats", code, "messages", m.id));
+    } catch {
+      setError("Couldn't delete that message. Try again.");
+    }
+  }
+
   function handleKey(e) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -299,7 +308,15 @@ export default function Room({ user, code, name, title, onBack }) {
                 )}
 
                 <div className={`text-[10px] text-[#5C5850] mt-1 ${mine ? "text-right" : ""}`}>
-                  {timeOf(m)}
+                                   {timeOf(m)}
+                  {mine && (
+                    <button
+                      onClick={() => removeMessage(m)}
+                      className="ml-2 text-[#5C5850] hover:text-[#E07A66] underline"
+                    >
+                      Delete
+                    </button>
+                  )}
                 </div>
               </div>
               {!mine && reactBtn}
