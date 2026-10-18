@@ -206,7 +206,7 @@ export default function Lobby({ user, authError, initialCode, onEnterRoom, onSol
 
           <div className="mt-8 pt-4 border-t border-[#1E1D1A] text-[11px] text-[#5C5850] space-y-1">
             <div>© 2026 Sibiya AI. All rights reserved.</div>
-            <div>Built by Sizwe Sicelimilo Sibiya · Durban, South Africa</div>
+            <div>Built by Sizwe Sicelimpilo Sibiya · Durban, South Africa</div>
           </div>
         </div>
       </div>
