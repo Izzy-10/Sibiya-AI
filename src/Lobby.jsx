@@ -211,4 +211,4 @@ export default function Lobby({ user, authError, initialCode, onEnterRoom, onSol
       </div>
     </div>
   );
-      }
+}
