@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { FAMILY_KNOWLEDGE } from "../lib/family.js";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -95,7 +96,7 @@ export default async function handler(req, res) {
       const response = await anthropic.messages.create({
         model: "claude-sonnet-4-6",
         max_tokens: 600,
-        system: ROOM_PROMPT,
+                system: ROOM_PROMPT + FAMILY_KNOWLEDGE,
         messages: [{ role: "user", content: userMessage }],
       });
       return res.status(200).json(response);
@@ -118,7 +119,7 @@ export default async function handler(req, res) {
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: isOwner ? 1000 : 700,
-      system: isOwner ? OWNER_PROMPT : generalPrompt(user.name),
+           system: (isOwner ? OWNER_PROMPT : generalPrompt(user.name)) + FAMILY_KNOWLEDGE,
       messages,
     });
     return res.status(200).json(response);
