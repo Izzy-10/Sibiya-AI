@@ -177,8 +177,8 @@ export default function Lobby({ user, authError, initialCode, onEnterRoom, onSol
             <span className="w-2 h-2 rounded-full bg-[#A13D2D]" />
             Available for projects &amp; collaborations
           </p>
-                    <a href="/about.html">About</a>
-          <a href="/support.html">Support</a>
+          <a
+            href="/about.html"
             className="inline-block mt-4 bg-[#C9A44C] text-[#0B0B0C] rounded-xl px-5 py-2.5 text-[13px] font-semibold"
           >
             About Sibiya AI →
@@ -188,6 +188,7 @@ export default function Lobby({ user, authError, initialCode, onEnterRoom, onSol
             <div className="space-y-2.5">
               <div className="text-[10px] uppercase tracking-widest text-[#C9A44C]">Pages</div>
               <a href="/about.html" className="block text-[13px] hover:text-[#C9A44C]">About</a>
+              <a href="/support.html" className="block text-[13px] hover:text-[#C9A44C]">Support</a>
               <a href="/privacy.html" className="block text-[13px] hover:text-[#C9A44C]">Privacy</a>
             </div>
             <div className="space-y-2.5">
@@ -211,4 +212,4 @@ export default function Lobby({ user, authError, initialCode, onEnterRoom, onSol
       </div>
     </div>
   );
-}
+      }
