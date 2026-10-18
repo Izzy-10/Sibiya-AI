@@ -37,7 +37,7 @@ export default function Root() {
   }
 
   if (view === "solo") {
-    if (user && !user.isAnonymous) return <App />;
+       if (user && !user.isAnonymous) return <App onHome={() => window.history.back()} />;
     return <SignIn onBack={() => window.history.back()} />;
   }
 
