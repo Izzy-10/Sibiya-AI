@@ -92,7 +92,7 @@ export default function Lobby({ user, authError, initialCode, onEnterRoom, onSol
                {user && !user.isAnonymous && (
           <div className="flex items-center justify-between rounded-xl border border-[#232019] bg-[#161514] px-3 py-2 text-[12px]">
             <span className="truncate text-[#D8D2C4]">
-              Signed in as {user.displayName || user.email}
+                           Signed in as {user.displayName ? user.displayName.replace(/(^|\s)(\p{L})/gu, (m, a, b) => a + b.toUpperCase()) : user.email}
             </span>
             <button
               onClick={onSignOut}
