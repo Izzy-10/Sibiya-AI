@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Send, Share2, Check, Smile, Mic, Paperclip, Trash2 } from "lucide-react";
+import { ArrowLeft, Send, Share2, Check, Smile, Mic, Paperclip, Trash2, Phone } from "lucide-react";
 import {
   addDoc,
   arrayRemove,
@@ -26,6 +26,7 @@ import {
   prepareFile,
   useVoiceRecorder,
 } from "./Media.jsx";
+import CallView from "./Call.jsx";
 
 const MENTION = /@sibiya\b/i;
 
@@ -53,6 +54,7 @@ export default function Room({ user, code, name, title, onBack }) {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [pickerFor, setPickerFor] = useState(null);
+  const [inCall, setInCall] = useState(false);
   const scrollRef = useRef(null);
   const messagesRef = useRef([]);
   const fileInputRef = useRef(null);
@@ -237,6 +239,26 @@ export default function Room({ user, code, name, title, onBack }) {
     }
   }
 
+  async function startCall() {
+    setError("");
+    if (!liveCallId) {
+      try {
+        await addDoc(collection(db, "chats", code, "messages"), {
+          text: "📞 " + name + " started a call",
+          uid: user.uid,
+          name,
+          ai: false,
+          type: "call",
+          createdAt: serverTimestamp(),
+        });
+      } catch {
+        setError("Couldn't start the call. Check your connection.");
+        return;
+      }
+    }
+    setInCall(true);
+  }
+
   function handleKey(e) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -267,6 +289,16 @@ export default function Room({ user, code, name, title, onBack }) {
     }
   }
 
+  const nowMs = Date.now();
+  let liveCallId = null;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].type === "call") {
+      const t = messages[i].createdAt?.toMillis?.() || nowMs;
+      if (nowMs - t < 2 * 60 * 60 * 1000) liveCallId = messages[i].id;
+      break;
+    }
+  }
+
   return (
     <div
       style={{ fontFamily: "system-ui, -apple-system, 'Segoe UI', sans-serif" }}
@@ -291,6 +323,13 @@ export default function Room({ user, code, name, title, onBack }) {
           <div className="font-bold text-[15px] truncate">{meta?.title || title || "Group chat"}</div>
           <div className="text-[10px] text-[#8A8580] tracking-wide truncate">Code: {code}</div>
         </div>
+        <button
+          onClick={startCall}
+          aria-label="Start or join a call"
+          className="w-9 h-9 shrink-0 rounded-full border border-[#C9A44C]/50 text-[#C9A44C] flex items-center justify-center"
+        >
+          <Phone size={16} />
+        </button>
         <button
           onClick={share}
           className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest rounded-full px-3 py-1.5 border border-[#C9A44C]/50 text-[#C9A44C]"
@@ -351,6 +390,26 @@ export default function Room({ user, code, name, title, onBack }) {
                     <VoiceBubble code={code} m={m} mine={mine} />
                   ) : m.type === "file" && m.mediaId ? (
                     <FileBubble code={code} m={m} mine={mine} />
+                  ) : m.type === "call" ? (
+                    <div className="min-w-[200px]">
+                      <div className="flex items-center gap-2 font-semibold">
+                        <Phone size={16} />
+                        <span>Group call</span>
+                      </div>
+                      <div className="text-[12px] opacity-80 mt-0.5">{m.name} started a call</div>
+                      {liveCallId === m.id ? (
+                        <button
+                          onClick={() => setInCall(true)}
+                          className={`mt-2 w-full rounded-xl px-4 py-2 text-[13px] font-semibold ${
+                            mine ? "bg-[#0B0B0C] text-[#C9A44C]" : "bg-[#C9A44C] text-[#0B0B0C]"
+                          }`}
+                        >
+                          Join call
+                        </button>
+                      ) : (
+                        <div className="text-[11px] opacity-70 mt-2">Earlier call</div>
+                      )}
+                    </div>
                   ) : (
                     m.text
                   )}
@@ -492,6 +551,8 @@ export default function Room({ user, code, name, title, onBack }) {
           Type @sibiya to ask the AI
         </div>
       </div>
+
+      {inCall && <CallView code={code} name={name} onClose={() => setInCall(false)} />}
     </div>
   );
 }
