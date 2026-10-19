@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Send, Share2, Check, Smile } from "lucide-react";
+import { ArrowLeft, Send, Share2, Check, Smile, Mic, Paperclip, Trash2 } from "lucide-react";
 import {
-   addDoc,
-  deleteDoc,
+  addDoc,
   arrayRemove,
   arrayUnion,
+  Bytes,
   collection,
+  deleteDoc,
   doc,
   limitToLast,
   onSnapshot,
@@ -16,6 +17,15 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { db, getToken } from "./firebase.js";
+import {
+  FileBubble,
+  MAX_BYTES,
+  MAX_SECONDS,
+  VoiceBubble,
+  fmtTime,
+  prepareFile,
+  useVoiceRecorder,
+} from "./Media.jsx";
 
 const MENTION = /@sibiya\b/i;
 
@@ -39,11 +49,18 @@ export default function Room({ user, code, name, title, onBack }) {
   const [meta, setMeta] = useState(null);
   const [input, setInput] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
+  const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [pickerFor, setPickerFor] = useState(null);
   const scrollRef = useRef(null);
   const messagesRef = useRef([]);
+  const fileInputRef = useRef(null);
+
+  const recorder = useVoiceRecorder({
+    onDone: v => sendMedia({ type: "voice", blob: v.blob, mime: v.mime, duration: v.duration }),
+    onError: setError,
+  });
 
   useEffect(() => {
     const metaRef = doc(db, "chats", code, "info", "meta");
@@ -137,6 +154,64 @@ export default function Room({ user, code, name, title, onBack }) {
     if (MENTION.test(text) && !aiBusy) askAI(name);
   }
 
+  async function sendMedia(info) {
+    setSending(true);
+    setError("");
+    try {
+      const buf = new Uint8Array(await info.blob.arrayBuffer());
+      if (buf.length > MAX_BYTES) {
+        setError("That is too big to send. Voice notes up to 60 seconds and files up to 900 KB work.");
+        return;
+      }
+      const mediaRef = await addDoc(collection(db, "chats", code, "media"), {
+        data: Bytes.fromUint8Array(buf),
+        mime: info.mime,
+        uid: user.uid,
+        createdAt: serverTimestamp(),
+      });
+      const msg = {
+        text: info.type === "voice" ? "🎤 Voice note" : "📎 " + info.fileName,
+        uid: user.uid,
+        name,
+        ai: false,
+        type: info.type,
+        mediaId: mediaRef.id,
+        mime: info.mime,
+        createdAt: serverTimestamp(),
+      };
+      if (info.type === "voice") {
+        msg.duration = Math.round(info.duration);
+      } else {
+        msg.fileName = info.fileName.slice(0, 100);
+        msg.fileSize = buf.length;
+      }
+      await addDoc(collection(db, "chats", code, "messages"), msg);
+    } catch {
+      setError("Couldn't send that. Check your connection and try again.");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function pickFile(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setError("");
+    try {
+      const f = await prepareFile(file);
+      await sendMedia({ type: "file", blob: f.blob, mime: f.mime, fileName: f.name });
+    } catch (err) {
+      setError(
+        err?.message === "blocked"
+          ? "That file type can't be shared."
+          : err?.message === "too-big"
+          ? "That file is too big. Files up to about 900 KB work, and photos are shrunk automatically."
+          : "Couldn't read that file."
+      );
+    }
+  }
+
   async function react(m, key) {
     setPickerFor(null);
     const already = Array.isArray(m.reactions?.[key]) && m.reactions[key].includes(user.uid);
@@ -149,12 +224,16 @@ export default function Room({ user, code, name, title, onBack }) {
     }
   }
 
-   async function removeMessage(m) {
+  async function removeMessage(m) {
     if (!window.confirm("Delete this message for everyone?")) return;
     try {
       await deleteDoc(doc(db, "chats", code, "messages", m.id));
     } catch {
       setError("Couldn't delete that message. Try again.");
+      return;
+    }
+    if (m.mediaId) {
+      deleteDoc(doc(db, "chats", code, "media", m.mediaId)).catch(() => {});
     }
   }
 
@@ -268,7 +347,13 @@ export default function Room({ user, code, name, title, onBack }) {
                       : "bg-[#161514] border border-[#232019] rounded-bl-sm"
                   }`}
                 >
-                  {m.text}
+                  {m.type === "voice" && m.mediaId ? (
+                    <VoiceBubble code={code} m={m} mine={mine} />
+                  ) : m.type === "file" && m.mediaId ? (
+                    <FileBubble code={code} m={m} mine={mine} />
+                  ) : (
+                    m.text
+                  )}
                 </div>
 
                 {pickerFor === m.id && (
@@ -308,7 +393,7 @@ export default function Room({ user, code, name, title, onBack }) {
                 )}
 
                 <div className={`text-[10px] text-[#5C5850] mt-1 ${mine ? "text-right" : ""}`}>
-                                   {timeOf(m)}
+                  {timeOf(m)}
                   {mine && (
                     <button
                       onClick={() => removeMessage(m)}
@@ -339,24 +424,70 @@ export default function Room({ user, code, name, title, onBack }) {
         style={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))" }}
       >
         {error && <div className="text-[12px] text-[#E07A66] mb-2">{error}</div>}
-        <div className="flex items-end gap-2 bg-[#161514] border border-[#232019] rounded-2xl px-4 py-2 focus-within:border-[#C9A44C]/60 transition-colors">
-          <textarea
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={handleKey}
-            placeholder="Message the group..."
-            rows={1}
-            className="flex-1 bg-transparent resize-none outline-none text-[14px] py-2 placeholder:text-[#5C5850] max-h-32"
-          />
-          <button
-            onClick={send}
-            disabled={!input.trim()}
-            aria-label="Send"
-            className="w-8 h-8 shrink-0 mb-1 rounded-full bg-[#C9A44C] disabled:bg-[#2A2823] disabled:text-[#5C5850] text-[#0B0B0C] flex items-center justify-center transition-colors"
-          >
-            <Send size={14} />
-          </button>
-        </div>
+
+        {recorder.recording ? (
+          <div className="flex items-center gap-3 bg-[#161514] border border-[#A13D2D]/60 rounded-2xl px-4 py-2.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#E07A66] animate-pulse" />
+            <span className="text-[14px] tabular-nums">
+              {fmtTime(recorder.seconds)} / {fmtTime(MAX_SECONDS)}
+            </span>
+            <span className="flex-1" />
+            <button
+              onClick={recorder.cancel}
+              aria-label="Cancel recording"
+              className="w-8 h-8 rounded-full text-[#8A8580] hover:text-[#E07A66] flex items-center justify-center"
+            >
+              <Trash2 size={16} />
+            </button>
+            <button
+              onClick={recorder.stop}
+              aria-label="Send voice note"
+              className="w-8 h-8 rounded-full bg-[#C9A44C] text-[#0B0B0C] flex items-center justify-center"
+            >
+              <Send size={14} />
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-end gap-2 bg-[#161514] border border-[#232019] rounded-2xl px-3 py-2 focus-within:border-[#C9A44C]/60 transition-colors">
+            <input ref={fileInputRef} type="file" onChange={pickFile} className="hidden" />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={sending}
+              aria-label="Attach file"
+              className="w-8 h-8 shrink-0 mb-1 rounded-full text-[#8A8580] hover:text-[#C9A44C] disabled:opacity-40 flex items-center justify-center transition-colors"
+            >
+              <Paperclip size={16} />
+            </button>
+            <textarea
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={handleKey}
+              placeholder="Message the group..."
+              rows={1}
+              className="flex-1 bg-transparent resize-none outline-none text-[14px] py-2 placeholder:text-[#5C5850] max-h-32"
+            />
+            {input.trim() ? (
+              <button
+                onClick={send}
+                aria-label="Send"
+                className="w-8 h-8 shrink-0 mb-1 rounded-full bg-[#C9A44C] text-[#0B0B0C] flex items-center justify-center transition-colors"
+              >
+                <Send size={14} />
+              </button>
+            ) : (
+              <button
+                onClick={recorder.start}
+                disabled={sending}
+                aria-label="Record voice note"
+                className="w-8 h-8 shrink-0 mb-1 rounded-full bg-[#C9A44C] disabled:bg-[#2A2823] disabled:text-[#5C5850] text-[#0B0B0C] flex items-center justify-center transition-colors"
+              >
+                <Mic size={15} />
+              </button>
+            )}
+          </div>
+        )}
+
+        {sending && <div className="text-center text-[11px] text-[#8A8580] mt-2">Sending...</div>}
         <div className="text-center text-[10px] text-[#5C5850] mt-2 tracking-wide">
           Type @sibiya to ask the AI
         </div>
