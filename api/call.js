@@ -38,10 +38,13 @@ export default async function handler(req, res) {
   const url = process.env.LIVEKIT_URL;
   const key = process.env.LIVEKIT_API_KEY;
   const secret = process.env.LIVEKIT_API_SECRET;
+ 
   if (!url || !key || !secret) {
-    return res.status(500).json({ error: "Calls are not set up yet." });
+    const missing = [!url && "LIVEKIT_URL", !key && "LIVEKIT_API_KEY", !secret && "LIVEKIT_API_SECRET"]
+      .filter(Boolean)
+      .join(", ");
+    return res.status(500).json({ error: "Calls are not set up yet. Missing in Vercel: " + missing + "." });
   }
-
   try {
     const body = req.body || {};
     const code = String(body.code || "").trim().toLowerCase();
