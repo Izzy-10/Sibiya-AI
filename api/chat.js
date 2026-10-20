@@ -1,8 +1,36 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { FAMILY_KNOWLEDGE } from "../lib/family.js";
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+const PLAIN_RULE =
+  '\n\nFORMAT: Write in plain text only. Do not use markdown symbols such as ** for bold, * or _ for italics, # for headings, or backticks. For lists, put each item on its own line starting with "- ".';
+
+function plainText(t) {
+  return String(t || "")
+    .replace(/```[a-z]*\n?/gi, "")
+    .replace(/\*\*([\s\S]+?)\*\*/g, "$1")
+    .replace(/__([\s\S]+?)__/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^\s*\*\s+/gm, "- ")
+    .replace(/(^|[\s(])\*(?!\s)([^*\n]+?)\*(?=[\s).,!?:;]|$)/g, "$1$2")
+    .replace(/`([^`]+)`/g, "$1");
+}
+
+const anthropic = {
+  messages: {
+    create: async params => {
+      const response = await client.messages.create({
+        ...params,
+        system: params.system + PLAIN_RULE,
+      });
+      response.content = (response.content || []).map(b =>
+        b.type === "text" ? { ...b, text: plainText(b.text) } : b
+      );
+      return response;
+    },
+  },
+};
 const FIREBASE_API_KEY = "AIzaSyByw2cQQXcWjVl2ESpiPJ32-6VLETvBOx0";
 const OWNER_EMAIL = (process.env.OWNER_EMAIL || "").trim().toLowerCase();
 
