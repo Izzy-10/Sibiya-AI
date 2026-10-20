@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Share2, Check } from "lucide-react";
 import Logo from "./Logo.jsx";
 
 const ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
@@ -47,6 +48,7 @@ export default function Lobby({ user, authError, initialCode, onEnterRoom, onSol
   const [title, setTitle] = useState("");
   const [code, setCode] = useState(initialCode || "");
   const [error, setError] = useState("");
+  const [shared, setShared] = useState(false);
   const ready = !!user;
 
   function requireName() {
@@ -75,6 +77,27 @@ export default function Lobby({ user, authError, initialCode, onEnterRoom, onSol
       return;
     }
     onEnterRoom(c, n, "");
+  }
+
+  async function shareApp() {
+    const url = "https://sibiya-ai.vercel.app";
+    const text =
+      "Sawubona! Try Sibiya AI, an AI assistant made in South Africa. It speaks isiZulu and English, and has group chats, voice notes and calls.";
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "Sibiya AI", text, url });
+        return;
+      }
+    } catch {
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text + " " + url);
+      setShared(true);
+      setTimeout(() => setShared(false), 2000);
+    } catch {
+      window.prompt("Copy this to share:", text + " " + url);
+    }
   }
 
   return (
@@ -177,12 +200,22 @@ export default function Lobby({ user, authError, initialCode, onEnterRoom, onSol
             <span className="w-2 h-2 rounded-full bg-[#A13D2D]" />
             Available for projects &amp; collaborations
           </p>
-          <a
-            href="/about.html"
-            className="inline-block mt-4 bg-[#C9A44C] text-[#0B0B0C] rounded-xl px-5 py-2.5 text-[13px] font-semibold"
-          >
-            About Sibiya AI →
-          </a>
+
+          <div className="flex flex-wrap gap-3 mt-4">
+            <a
+              href="/about.html"
+              className="inline-block bg-[#C9A44C] text-[#0B0B0C] rounded-xl px-5 py-2.5 text-[13px] font-semibold"
+            >
+              About Sibiya AI →
+            </a>
+            <button
+              onClick={shareApp}
+              className="inline-flex items-center gap-2 border border-[#C9A44C]/60 text-[#C9A44C] rounded-xl px-5 py-2.5 text-[13px] font-semibold"
+            >
+              {shared ? <Check size={15} /> : <Share2 size={15} />}
+              {shared ? "Link copied" : "Share Sibiya AI"}
+            </button>
+          </div>
 
           <div className="grid grid-cols-2 gap-6 mt-8">
             <div className="space-y-2.5">
@@ -212,4 +245,4 @@ export default function Lobby({ user, authError, initialCode, onEnterRoom, onSol
       </div>
     </div>
   );
-      }
+}
