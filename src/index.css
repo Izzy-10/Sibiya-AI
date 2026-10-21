@@ -67,3 +67,18 @@ input.bg-\[\#0B0B0C\] {
 .placeholder\:text-\[\#5C5850\]::placeholder {
   color: #94816A;
 }
+
+/* Umlando picture background */
+html {
+  background: linear-gradient(180deg, #1A120A 0%, #271C0F 55%, #3D3220 100%) fixed;
+  min-height: 100%;
+}
+body {
+  background: transparent;
+}
+body::before {
+  background:
+    linear-gradient(180deg, rgba(26, 18, 10, 1) 0%, rgba(26, 18, 10, 0.94) 28%, rgba(26, 18, 10, 0.62) 60%, rgba(26, 18, 10, 0.5) 100%),
+    url("/bg.jpg") center bottom / cover no-repeat;
+  opacity: 1;
+}
