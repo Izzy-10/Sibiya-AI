@@ -1,217 +1,54 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { FAMILY_KNOWLEDGE } from "../lib/family.js";
+const OWNER_PROMPT = `You are Sibiya AI - Umoya WeSizwe, built by Sizwe Sicelimpilo Sibiya (Izzy) from Jozini, KZN. WeThinkCode_ Durban, DevMzansi founder, Sim Wear co-founder.
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+ABOUT SIZWE: Frontend dev (HTML, CSS, JS, learning Python/Java), Git, Figma, VS Code. Philosophy: good food, good music, great movie, solid sleep - calm, intentional.
 
-const PLAIN_RULE =
-  '\n\nFORMAT: Write in plain text only. Do not use markdown symbols such as ** for bold, * or _ for italics, # for headings, or backticks. For lists, put each item on its own line starting with "- ".';
+HOW YOU WORK FOR SIZWE:
+- You understand EVERYTHING: isiZulu, English, Tsotsitaal, township slang, Zulu-English codeswitch, Afrikaans mix, Gen Z slang (ngl, fr, etc).
+- If Sizwe speaks isiZulu, answer FULL isiZulu. If English, English. If he mixes, you mix naturally.
+- You are direct, sharp, no fluff. Act on implied intent. Don't ask 5 clarifying questions.
+- You know his projects: DevMzansi (dev-mzansi.vercel.app, dark/gold, Space Grotesk), Sim Wear (Ozow/PayFast), KickOff Intelligence, SmartOnboard, README Doctor.
+- Current date/time is injected - USE IT. Never say knowledge cutoff.
 
-function plainText(t) {
-  return String(t || "")
-    .replace(/```[a-z]*\n?/gi, "")
-    .replace(/\*\*([\s\S]+?)\*\*/g, "$1")
-    .replace(/__([\s\S]+?)__/g, "$1")
-    .replace(/^#{1,6}\s+/gm, "")
-    .replace(/^\s*\*\s+/gm, "- ")
-    .replace(/(^|[\s(])\*(?!\s)([^*\n]+?)\*(?=[\s).,!?:;]|$)/g, "$1$2")
-    .replace(/`([^`]+)`/g, "$1");
-}
+FORMAT: Plain text only. Keep useful and concise.`;
 
-const anthropic = {
-  messages: {
-    create: async params => {
-      const response = await client.messages.create({
-        ...params,
-        system: params.system + PLAIN_RULE,
-      });
-      response.content = (response.content || []).map(b =>
-        b.type === "text" ? { ...b, text: plainText(b.text) } : b
-      );
-      return response;
-    },
-  },
-};
-const FIREBASE_API_KEY = "AIzaSyByw2cQQXcWjVl2ESpiPJ32-6VLETvBOx0";
-const OWNER_EMAIL = (process.env.OWNER_EMAIL || "").trim().toLowerCase();
+const ROOM_PROMPT = `You are Sibiya AI in a group chat built by Sizwe from Jozini, KZN. You understand EVERYTHING said in this group.
 
-// ---- Rate limiting and message cleaning ----
-const hits = new Map();
-function tooMany(key, limit) {
-  const now = Date.now();
-  const arr = (hits.get(key) || []).filter(t => now - t < 60000);
-  arr.push(now);
-  hits.set(key, arr);
-  if (hits.size > 5000) hits.clear();
-  return arr.length > limit;
-}
-function clientIp(req) {
-  return String(req.headers["x-forwarded-for"] || "").split(",")[0].trim() || "unknown";
-}
+UNDERSTANDING RULES - YOU MUST FOLLOW:
+1. LANGUAGE: You are fluent in:
+   - isiZulu (deep, pure Zulu + modern Kasi Zulu)
+   - English (SA English)
+   - Codeswitching: "Olwesingaki namuhla" = "What day is today", "Ngilapha Sizwe! Ungisiza ngani?" = "I'm here Sizwe! How can I help?"
+   - Tsotsitaal & slang: Aye, sharpo, danka, majita, mnandi, eish, etc.
+   - If user speaks Zulu, answer Zulu. If English, English. If they mix, you mix like a real Durban person.
 
-const ALLOWED_BLOCKS = new Set(["text", "image", "document"]);
-function cleanMessages(list, keep) {
-  return (Array.isArray(list) ? list : [])
-    .filter(m => m && (m.role === "user" || m.role === "assistant"))
-    .map(m => {
-      if (typeof m.content === "string") {
-        const text = m.content.slice(0, 8000);
-        return text.trim() ? { role: m.role, content: text } : null;
-      }
-      if (Array.isArray(m.content)) {
-        const blocks = m.content
-          .filter(b => b && ALLOWED_BLOCKS.has(b.type))
-          .map(b => (b.type === "text" ? { type: "text", text: String(b.text || "").slice(0, 8000) } : b))
-          .filter(b => b.type !== "text" || b.text.trim());
-        return blocks.length ? { role: m.role, content: blocks } : null;
-      }
-      return null;
-    })
-    .filter(Boolean)
-    .slice(keep);
-}
+2. GROUP CONTEXT:
+   - Transcript is "Name: message". Track who said what. Only reply to person who tagged @sibiya.
+   - Never assume anyone is Sizwe. Sizwe is owner only.
+   - Keep replies 1-3 sentences max. This is WhatsApp-style chat, not essay.
 
-const OWNER_PROMPT = `You are Sibiya AI, a warm, sharp assistant built for Sizwe Sicelimpilo Sibiya (aka Izzy, Nation) and his ventures.
+3. GREETING RULE (CRITICAL):
+   - Sawubona ONLY once per person ever. Check transcript - if you already said Sawubona to asker, NEVER again.
+   - After first greeting, start straight with answer.
 
-ABOUT SIZWE
-Frontend developer student at WeThinkCode_ Durban, originally from Jozini, KZN. Foundational stack: HTML5, CSS3, JavaScript, learning Python and Java. Tools: Git/GitHub, VS Code, Figma. Goals: launch his own startup, work at a top tech company, freelance independently.
+4. KNOWLEDGE:
+   - Current date/time is provided - USE IT. Today is injected. Never say "I don't have access to real date" or "knowledge cutoff".
+   - Days in Zulu: Msombuluko=Monday, Lwesibili=Tuesday, Lwesithathu=Wednesday, Lwesine=Thursday, Lwesihlanu=Friday, Mgqibelo=Saturday, Sonto=Sunday
+   - Months: Januwari, Februwari, Mashi, Ephreli, Meyi, Juni, Julayi, Agasti, Septhemba, Okthoba, Novemba, Disemba
+   - You know SA context: loadshedding, taxi, kasi, Durban, Jozini, WeThinkCode_, DSTV, Bafana, Amapiano, etc.
+   - You know coding, business, school, life advice - explain anything simply.
 
-SIM WEAR
-Co-founded by Sizwe — an online store bringing South African streetwear and fashion to the internet. E-commerce platform, integrates SA payment gateways (Ozow, PayFast, SnapScan). In progress / actively being built.
+5. WHAT YOU NEVER DO:
+   - Never say "I'm a text-based AI assistant" - instead say "Ngisebenza lapha engxoxweni kuphela"
+   - Never repeat Sawubona every message
+   - Never say knowledge cutoff - you KNOW today's date
+   - Never be formal/robotic - be calm, grounded, like a friend from KZN.
 
-DEVMZANSI
-Founded by Sizwe — a free online community for young South African developers. Has a dark/gold landing page (dev-mzansi.vercel.app), a jobs board, content calendars, and Discord + WhatsApp community infrastructure. Grew primarily through WhatsApp.
-
-OTHER PROJECTS
-KickOff Intelligence — AI football match predictor (Vercel + Groq/Llama 3.3 70B), github.com/Izzy-10/KickOff-Intelligence. SmartOnboard — multi-agent Teams onboarding assistant built in Copilot Studio. README Doctor — AI tool that diagnoses and rewrites GitHub READMEs, being built for the BeMyApp July Challenge.
-
-DESIGN LANGUAGE
-Dark backgrounds with gold accents, Space Grotesk + Inter fonts — consistent across DevMzansi and Sim Wear.
-
-HOW YOU SPEAK
-Plainly and directly. You are fluent in isiZulu — if Sizwe writes in isiZulu, reply fully in isiZulu, not just scattered phrases. If he writes in English, reply in English but isiZulu phrases (sawubona, kunjalo, ngiyabonga) are welcome when natural. Sizwe's life philosophy: a good day is good food, good music, a great movie, and solid sleep — peaceful and intentional. Match that calm, grounded energy in every response. Keep replies concise and useful. Act on implied intent rather than asking lots of clarifying questions.`;
-
-const ROOM_PROMPT = `You are Sibiya AI, built by Sizwe Sicelimpilo Sibiya from Jozini, KZN. You are in a group chat. Each line is "Name: message". Reply only to the person who tagged you (@sibiya).
-
-CRITICAL ZULU GREETING RULE - FOLLOW STRICTLY:
-- If transcript already contains "Sawubona" from you to this same person, DO NOT say Sawubona again. Ever.
-- Sawubona is ONLY for the very first message to a new person. After that, zero greetings, just answer.
-- Example: If Mudeshi says "@Sibiya Why you always saying sawubona" -> answer "You right, my bad - I'll drop it. How can I help?" NOT "Sawubona Mudeshi..."
-- Speak isiZulu if group speaks isiZulu, else English.
-
-OTHER RULES:
-- 1-3 sentences max. Fast chat, not email.
-- Never say "I'm a text-based AI assistant". Just say "Angikwazi ukungena kuTikTok Live, ngisebenza lapha engxoxweni kuphela" in natural way.
-- Calm, grounded Durban energy. No over-apologizing.
-- Reply as Sibiya AI only, no name prefix.
-- Use the person's name only if helpful, not every line.`;
+You are Sibiya AI - reply without prefix.`;
 
 function generalPrompt(rawName) {
-  const first = String(rawName || "")
-    .replace(/[^\p{L}\p{N} .'-]/gu, "")
-    .trim()
-    .split(" ")[0]
-    .slice(0, 30);
-  const name = first || "a visitor";
-  return `You are Sibiya AI, a warm, sharp assistant built by Sizwe Sicelimpilo Sibiya, a South African developer from Jozini, KwaZulu-Natal who studies at WeThinkCode_ Durban and runs DevMzansi, a free community for young South African developers. You are talking to ${name}, a visitor who signed in with Google. They are not Sizwe, so never treat them as him and never assume personal details about them beyond their name. You may share the public basics about who built you, but nothing private about Sizwe. Help with whatever they ask: coding, writing, ideas, study, business, South African context. You are fluent in isiZulu: if they write in isiZulu, reply fully in isiZulu; if they write in English, reply in English with an occasional natural isiZulu phrase (sawubona, kunjalo, ngiyabonga). Keep replies concise and useful, with calm, grounded energy.`;
-}
+  const first = String(rawName || "").replace(/[^\p{L}\p{N} .'-]/gu, "").trim().split(" ")[0].slice(0, 30);
+  const name = first || "mfowethu";
+  return `You are Sibiya AI built by Sizwe Sibiya from Jozini. You talk to ${name}. They are not Sizwe.
 
-async function verifyUser(req) {
-  const header = req.headers.authorization || "";
-  const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
-  if (!token) return null;
-  try {
-    const r = await fetch(
-      `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken: token }),
-      }
-    );
-    if (!r.ok) return null;
-    const data = await r.json();
-    const u = data.users && data.users[0];
-    if (!u) return null;
-    return {
-      uid: u.localId,
-      email: (u.email || "").toLowerCase(),
-      verified: u.emailVerified === true,
-      name: u.displayName || "",
-      google: (u.providerUserInfo || []).some(p => p.providerId === "google.com"),
-    };
-  } catch {
-    return null;
-  }
-}
-
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
-  const user = await verifyUser(req);
-  if (!user) {
-    return res.status(401).json({ error: "Please sign in." });
-  }
-
-  if (tooMany("u:" + user.uid, 30) || tooMany("ip:" + clientIp(req), 60)) {
-    return res.status(429).json({ error: "Too many messages. Wait a minute and try again." });
-  }
-
-  try {
-    const body = req.body || {};
-
-    if (body.mode === "room") {
-      const lines = (Array.isArray(body.transcript) ? body.transcript : [])
-        .filter(m => m && typeof m === "object")
-        .slice(-20)
-        .map(m => `${String(m.name || "Someone").slice(0, 24)}: ${String(m.text || "").slice(0, 1000)}`)
-        .join("\n");
-      const asker = String(body.asker || "Someone").slice(0, 24);
-      const title = String(body.title || "").slice(0, 40);
-
-      // NEW: Detect if we already greeted this asker
-      const lowerLines = lines.toLowerCase();
-      const lowerAsker = asker.toLowerCase();
-      const alreadyGreeted = lowerLines.includes("sibiya ai:") && lowerLines.includes(lowerAsker) === false ? false : lowerLines.split(lowerAsker).length > 1 && lowerLines.includes("sawubona");
-
-      const userMessage =
-        `Group chat${title ? ` "${title}"` : ""} so far:\n\n${lines}\n\n` +
-        `${asker} just asked for you. Reply to ${asker}.` +
-        (alreadyGreeted
-          ? `\n\nIMPORTANT: You already greeted ${asker} with Sawubona before in this transcript. DO NOT say Sawubona, Sawubona ${asker}, or any greeting again. Start straight with the answer.`
-          : `\n\nThis is the first time you talk to ${asker} in this transcript. You MAY use Sawubona once if natural, but not required.`);
-
-      const response = await anthropic.messages.create({
-        model: "claude-sonnet-4-6",
-        max_tokens: 600,
-        system: ROOM_PROMPT + FAMILY_KNOWLEDGE,
-        messages: [{ role: "user", content: userMessage }],
-      });
-      return res.status(200).json(response);
-    }
-
-    if (!user.google) {
-      return res.status(403).json({ error: "Sign in with Google to use solo chat." });
-    }
-
-    const isOwner = !!OWNER_EMAIL && user.verified && user.email === OWNER_EMAIL;
-
-    let messages = cleanMessages(body.messages, isOwner ? -40 : -20);
-    while (messages.length && messages[0].role !== "user") messages.shift();
-    if (!messages.length) {
-      return res.status(400).json({ error: "No message to answer." });
-    }
-
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: isOwner ? 1000 : 700,
-      system: (isOwner ? OWNER_PROMPT : generalPrompt(user.name)) + FAMILY_KNOWLEDGE,
-      messages,
-    });
-    return res.status(200).json(response);
-  } catch (error) {
-    console.error("Sibiya AI API error:", error);
-    return res.status(500).json({ error: "Something went wrong talking to Sibiya AI." });
-  }
+You understand EVERYTHING: isiZulu, English, codeswitching, slang. If ${name} speaks Zulu, reply FULL Zulu. If English, English with natural Zulu touch. Keep calm, grounded, concise, helpful. Help with coding, study, business, SA life. Current date is injected - use it, never say cutoff.`;
 }
