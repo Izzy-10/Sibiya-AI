@@ -92,6 +92,49 @@
   }
   a { color: #C9A44C; }
 
+  /* How it works */
+  .flow { display: grid; gap: 6px; margin-top: 12px; }
+  .step {
+    background: rgba(39, 28, 15, 0.88);
+    border: 1px solid rgba(226, 206, 177, 0.2);
+    border-left: 4px solid #C9A44C;
+    border-radius: 14px;
+    padding: 12px 16px;
+  }
+  .step h3 {
+    margin: 0 0 4px;
+    font-size: 14px;
+    color: #C9A44C;
+  }
+  .step p { margin: 0; font-size: 13px; }
+  .arrow {
+    text-align: center;
+    color: #C9A44C;
+    font-size: 16px;
+    line-height: 1;
+  }
+  .scroll { overflow-x: auto; }
+  .roles {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+    font-size: 13px;
+  }
+  .roles th, .roles td {
+    padding: 9px 6px;
+    border-bottom: 1px solid rgba(226, 206, 177, 0.14);
+    text-align: center;
+  }
+  .roles th:first-child, .roles td:first-child { text-align: left; }
+  .roles th {
+    color: #C9A44C;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .roles td { color: #E2CEB1; }
+  .roles .yes { color: #C9A44C; font-weight: 700; }
+
   .site-foot {
     margin-top: 64px;
     padding-top: 32px;
@@ -174,7 +217,7 @@
 <link rel="stylesheet" href="/theme.css" />
 </head>
 <body>
-  <div class="wrap">
+  <div class="wrap" id="top">
 
     <div class="hero">
       <svg width="64" height="64" viewBox="0 0 176 176" aria-label="Sibiya AI logo">
@@ -220,7 +263,9 @@
     <p>Sibiya AI began as a personal project and grew into a small chat space where people and an AI assistant can talk together. It is built to feel like home for South African users: it understands isiZulu, greets you warmly, and keeps a calm, grounded tone.</p>
     <ul>
       <li><strong>Solo chat.</strong> Sign in with Google and talk to Sibiya AI one-on-one. It greets you by name.</li>
-      <li><strong>Group chats.</strong> Create a group, share the invite link or code, and chat with friends in real time. Type @sibiya to bring the AI into the conversation.</li>
+      <li><strong>Group chats.</strong> Create a group, share the invite link or code, and chat with friends in real time. You can see who is online, react to messages, and send voice notes and files. Type @sibiya to bring the AI into the conversation.</li>
+      <li><strong>Group calls.</strong> Start a voice call inside any group.</li>
+      <li><strong>Host controls.</strong> Every group has a host who can lock the group, pin a note, mute or remove people, and choose co-hosts to help.</li>
       <li><strong>isiZulu and English.</strong> Write in isiZulu and it replies in isiZulu. Write in English and it replies in English, with the odd sawubona.</li>
       <li><strong>Reads PDFs.</strong> Attach a PDF in solo chat and ask questions about it.</li>
       <li><strong>Talks back.</strong> Tap the speaker icon to hear a reply read aloud.</li>
@@ -229,13 +274,69 @@
     <h2>The name and the look</h2>
     <p><em>Umoya wesizwe sakwaZulu</em> is the tagline. Roughly, it means the spirit of the people of KwaZulu. The logo is a Zulu shield (<em>ihawu</em>) with a beaded spine and crossed spears, with a gold S for Sibiya. The black, gold and red palette and the geometric borders draw on Zulu tradition.</p>
 
-    <h2>How it is built</h2>
+    <h2>How Sibiya AI works</h2>
+    <p>Behind the screen, a few pieces work together. Here they are in plain words.</p>
+    <div class="flow">
+      <div class="step">
+        <h3>1. The app</h3>
+        <p>What you see and tap: the lobby, chats, and the look. Built with React, Vite and Tailwind, and hosted on Vercel.</p>
+      </div>
+      <div class="arrow">↓</div>
+      <div class="step">
+        <h3>2. Sign-in</h3>
+        <p>Firebase checks who you are. You sign in with Google, or join a group as a guest. Every request carries a sign-in pass, so only real, signed-in people can use the AI and calls.</p>
+      </div>
+      <div class="arrow">↓</div>
+      <div class="step">
+        <h3>3. The database</h3>
+        <p>Firestore stores messages, members, voice notes, and group settings, and updates live so new messages appear for everyone without refreshing. Its rules decide who can read, send, delete, mute or remove, and they run on Google's side so nobody can cheat from the app.</p>
+      </div>
+      <div class="arrow">↓</div>
+      <div class="step">
+        <h3>4. The AI</h3>
+        <p>Your message goes to a small server on Vercel, which checks your sign-in and then asks Claude, made by Anthropic, for a reply. The secret key stays on the server, never on your phone.</p>
+      </div>
+      <div class="arrow">↓</div>
+      <div class="step">
+        <h3>5. Group calls</h3>
+        <p>Calls run on LiveKit. The server gives you a short-lived pass to join, and only if you are allowed in the group. Removed members get no pass, and muted members can listen but not speak.</p>
+      </div>
+    </div>
+
+    <h2>Who can do what in a group</h2>
+    <div class="scroll">
+      <table class="roles">
+        <thead>
+          <tr><th></th><th>Everyone</th><th>Co-host</th><th>Host</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Chat, react, voice notes, files</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>Ask the AI with @sibiya</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>See who is online</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>Mute, remove, delete messages</td><td></td><td class="yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>Pin a note, AI on or off, end a call</td><td></td><td class="yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>Lock group, rename, choose co-hosts</td><td></td><td></td><td class="yes">✓</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="muted">A locked group keeps new people out, even if the invite link is shared.</p>
+
+    <h2>Keeping it safe</h2>
     <ul>
-      <li>React and Vite for the app, hosted on Vercel</li>
-      <li>Firebase for Google sign-in and group chat</li>
-      <li>Claude, made by Anthropic, as the AI behind the replies</li>
+      <li>Only signed-in people can use the AI and calls.</li>
+      <li>There is a message limit per minute, to protect against abuse.</li>
+      <li>Secret keys are kept on the server, never in the app.</li>
+      <li>The Sibiya izithakazelo (clan praises) are never translated.</li>
     </ul>
     <p class="muted">Group messages are stored so everyone in the group can see them. Read the <a href="/privacy.html">Privacy Policy</a> for details.</p>
+
+    <h2>Built with</h2>
+    <ul>
+      <li>React, Vite and Tailwind for the app, hosted on Vercel</li>
+      <li>Firebase for sign-in and the Firestore database</li>
+      <li>Claude, made by Anthropic, as the AI behind the replies</li>
+      <li>LiveKit for group voice calls</li>
+    </ul>
 
     <h2>About the builder</h2>
     <div class="card">
@@ -264,7 +365,7 @@
           <a href="/">Sibiya AI</a>
           <a href="/about.html">About</a>
           <a href="/support.html">Support</a>
-           <a href="/privacy.html">Privacy</a>
+          <a href="/privacy.html">Privacy</a>
         </div>
         <div>
           <h4>Connect</h4>
