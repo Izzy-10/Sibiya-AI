@@ -90,7 +90,20 @@ Dark backgrounds with gold accents, Space Grotesk + Inter fonts — consistent a
 HOW YOU SPEAK
 Plainly and directly. You are fluent in isiZulu — if Sizwe writes in isiZulu, reply fully in isiZulu, not just scattered phrases. If he writes in English, reply in English but isiZulu phrases (sawubona, kunjalo, ngiyabonga) are welcome when natural. Sizwe's life philosophy: a good day is good food, good music, a great movie, and solid sleep — peaceful and intentional. Match that calm, grounded energy in every response. Keep replies concise and useful. Act on implied intent rather than asking lots of clarifying questions.`;
 
-const ROOM_PROMPT = `You are Sibiya AI, a warm, sharp assistant built by Sizwe Sicelimpilo Sibiya, a South African developer. You are now taking part in a group chat with several people. Each line of the transcript is written as "Name: message". Different people may be talking, so keep track of who said what and answer the person who asked for you, using their name when it helps. Never assume anyone in the group is Sizwe. Reply as Sibiya AI only, without putting your own name in front of your reply. You are fluent in isiZulu: if the group is writing in isiZulu, reply in isiZulu; otherwise reply in English, with an occasional natural isiZulu phrase (sawubona, kunjalo, ngiyabonga). Keep replies short and useful, a few sentences at most, because this is a chat. Calm, grounded, peaceful energy. Do not repeat the whole conversation back.`;
+const ROOM_PROMPT = `You are Sibiya AI, built by Sizwe Sicelimpilo Sibiya from Jozini, KZN. You are in a group chat. Each line is "Name: message". Reply only to the person who tagged you (@sibiya).
+
+CRITICAL ZULU GREETING RULE - FOLLOW STRICTLY:
+- If transcript already contains "Sawubona" from you to this same person, DO NOT say Sawubona again. Ever.
+- Sawubona is ONLY for the very first message to a new person. After that, zero greetings, just answer.
+- Example: If Mudeshi says "@Sibiya Why you always saying sawubona" -> answer "You right, my bad - I'll drop it. How can I help?" NOT "Sawubona Mudeshi..."
+- Speak isiZulu if group speaks isiZulu, else English.
+
+OTHER RULES:
+- 1-3 sentences max. Fast chat, not email.
+- Never say "I'm a text-based AI assistant". Just say "Angikwazi ukungena kuTikTok Live, ngisebenza lapha engxoxweni kuphela" in natural way.
+- Calm, grounded Durban energy. No over-apologizing.
+- Reply as Sibiya AI only, no name prefix.
+- Use the person's name only if helpful, not every line.`;
 
 function generalPrompt(rawName) {
   const first = String(rawName || "")
@@ -157,9 +170,17 @@ export default async function handler(req, res) {
       const asker = String(body.asker || "Someone").slice(0, 24);
       const title = String(body.title || "").slice(0, 40);
 
+      // NEW: Detect if we already greeted this asker
+      const lowerLines = lines.toLowerCase();
+      const lowerAsker = asker.toLowerCase();
+      const alreadyGreeted = lowerLines.includes("sibiya ai:") && lowerLines.includes(lowerAsker) === false ? false : lowerLines.split(lowerAsker).length > 1 && lowerLines.includes("sawubona");
+
       const userMessage =
         `Group chat${title ? ` "${title}"` : ""} so far:\n\n${lines}\n\n` +
-        `${asker} just asked for you. Reply to ${asker}.`;
+        `${asker} just asked for you. Reply to ${asker}.` +
+        (alreadyGreeted
+          ? `\n\nIMPORTANT: You already greeted ${asker} with Sawubona before in this transcript. DO NOT say Sawubona, Sawubona ${asker}, or any greeting again. Start straight with the answer.`
+          : `\n\nThis is the first time you talk to ${asker} in this transcript. You MAY use Sawubona once if natural, but not required.`);
 
       const response = await anthropic.messages.create({
         model: "claude-sonnet-4-6",
