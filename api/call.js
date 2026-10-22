@@ -1,6 +1,8 @@
-import { AccessToken } from "livekit-server-sdk";
+import { AccessToken, RoomServiceClient } from "livekit-server-sdk";
 
 const FIREBASE_API_KEY = "AIzaSyByw2cQQXcWjVl2ESpiPJ32-6VLETvBOx0";
+const PROJECT_ID = "sibiya-ai";
+const FS = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 
 async function verifyUser(req) {
   const header = req.headers.authorization || "";
@@ -19,7 +21,20 @@ async function verifyUser(req) {
     const data = await r.json();
     const u = data.users && data.users[0];
     if (!u) return null;
-    return { uid: u.localId, name: u.displayName || "" };
+    return { uid: u.localId, name: u.displayName || "", token };
+  } catch {
+    return null;
+  }
+}
+
+// Reads a Firestore document as the signed-in user, so your Firestore rules still apply.
+async function readDoc(path, token) {
+  try {
+    const r = await fetch(`${FS}/${path}`, { headers: { Authorization: "Bearer " + token } });
+    if (r.status === 404) return { fields: {} };
+    if (!r.ok) return null;
+    const d = await r.json();
+    return { fields: d.fields || {} };
   } catch {
     return null;
   }
@@ -38,7 +53,7 @@ export default async function handler(req, res) {
   const url = process.env.LIVEKIT_URL;
   const key = process.env.LIVEKIT_API_KEY;
   const secret = process.env.LIVEKIT_API_SECRET;
- 
+
   if (!url || !key || !secret) {
     const missing = [!url && "LIVEKIT_URL", !key && "LIVEKIT_API_KEY", !secret && "LIVEKIT_API_SECRET"]
       .filter(Boolean)
@@ -47,9 +62,43 @@ export default async function handler(req, res) {
   }
   try {
     const body = req.body || {};
-    const code = String(body.code || "").trim().toLowerCase();
-    if (!/^[a-z0-9-]{6,40}$/.test(code)) {
+    const rawCode = String(body.code || "").trim();
+    if (!/^[A-Za-z0-9-]{6,40}$/.test(rawCode)) {
       return res.status(400).json({ error: "Invalid group code." });
+    }
+    const code = rawCode.toLowerCase();
+    const roomName = "sibiya-" + code;
+
+    // Is this person removed or muted in the group? Who is the host?
+    const member = await readDoc(`chats/${rawCode}/members/${encodeURIComponent(user.uid)}`, user.token);
+    if (member && member.fields.removed && member.fields.removed.booleanValue === true) {
+      return res.status(403).json({ error: "The host removed you from this group." });
+    }
+    const muted = !!(member && member.fields.muted && member.fields.muted.booleanValue === true);
+
+    const meta = await readDoc(`chats/${rawCode}/info/meta`, user.token);
+    const hostUid = (meta && meta.fields.hostUid && meta.fields.hostUid.stringValue) || "";
+    const isHost = !!hostUid && hostUid === user.uid;
+
+    const action = String(body.action || "join");
+
+    // Host-only: end the call for everyone, or drop one person from it
+    if (action === "end" || action === "kick") {
+      if (!isHost) {
+        return res.status(403).json({ error: "Only the host can do that." });
+      }
+      const svc = new RoomServiceClient(url.replace(/^ws/, "http"), key, secret);
+      try {
+        if (action === "end") {
+          await svc.deleteRoom(roomName);
+        } else {
+          const target = String(body.target || "").slice(0, 128);
+          if (target) await svc.removeParticipant(roomName, target);
+        }
+      } catch {
+        // the call may already be empty, which is fine
+      }
+      return res.status(200).json({ ok: true });
     }
 
     const name =
@@ -61,8 +110,8 @@ export default async function handler(req, res) {
     const at = new AccessToken(key, secret, { identity: user.uid, name, ttl: 21600 });
     at.addGrant({
       roomJoin: true,
-      room: "sibiya-" + code,
-      canPublish: true,
+      room: roomName,
+      canPublish: !muted,
       canSubscribe: true,
     });
     const token = await at.toJwt();
