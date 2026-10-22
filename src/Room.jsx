@@ -17,6 +17,11 @@ import {
   Bot,
   Pencil,
   X,
+  Lock,
+  Unlock,
+  Pin,
+  Shield,
+  ShieldCheck,
 } from "lucide-react";
 import {
   addDoc,
@@ -25,6 +30,7 @@ import {
   Bytes,
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
   limitToLast,
@@ -50,6 +56,9 @@ import CallView from "./Call.jsx";
 const MENTION = /@sibiya\b/i;
 const ONLINE_WINDOW_MS = 75000;
 
+const BTN =
+  "w-full flex items-center gap-2 rounded-xl border border-[#232019] bg-[#0B0B0C] px-4 py-2.5 text-[13px] text-[#F5F1E8]";
+
 const REACTIONS = [
   { key: "like", emoji: "👍" },
   { key: "love", emoji: "❤️" },
@@ -73,6 +82,7 @@ function isOnline(m) {
 export default function Room({ user, code, name, title, onBack }) {
   const [messages, setMessages] = useState([]);
   const [members, setMembers] = useState([]);
+  const [membersLoaded, setMembersLoaded] = useState(false);
   const [meta, setMeta] = useState(null);
   const [input, setInput] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
@@ -89,8 +99,13 @@ export default function Room({ user, code, name, title, onBack }) {
   const kickedRef = useRef(false);
 
   const hostUid = meta?.hostUid || "";
+  const coHosts = Array.isArray(meta?.coHosts) ? meta.coHosts : [];
   const isHost = !!hostUid && hostUid === user.uid;
+  const isCoHost = coHosts.includes(user.uid);
+  const isStaff = isHost || isCoHost;
   const aiOn = meta?.aiEnabled !== false;
+  const locked = meta?.locked === true;
+  const pinned = meta?.pinned?.text ? meta.pinned : null;
   const me = members.find(m => m.id === user.uid);
   const iAmRemoved = !!me?.removed;
   const iAmMuted = !!me?.muted;
@@ -100,9 +115,17 @@ export default function Room({ user, code, name, title, onBack }) {
   const sortedMembers = [...activeMembers].sort(
     (a, b) =>
       (b.id === hostUid) - (a.id === hostUid) ||
+      coHosts.includes(b.id) - coHosts.includes(a.id) ||
       isOnline(b) - isOnline(a) ||
       String(a.name || "").localeCompare(String(b.name || ""))
   );
+
+  // Who this person is allowed to mute or remove
+  function canManage(m) {
+    if (m.id === user.uid || m.id === hostUid) return false;
+    if (isHost) return true;
+    return isCoHost && !coHosts.includes(m.id);
+  }
 
   const recorder = useVoiceRecorder({
     onDone: v => sendMedia({ type: "voice", blob: v.blob, mime: v.mime, duration: v.duration }),
@@ -161,10 +184,12 @@ export default function Room({ user, code, name, title, onBack }) {
   useEffect(() => {
     const unsub = onSnapshot(
       collection(db, "chats", code, "members"),
-      snap =>
+      snap => {
         setMembers(
           snap.docs.map(d => ({ id: d.id, ...d.data({ serverTimestamps: "estimate" }) }))
-        ),
+        );
+        setMembersLoaded(true);
+      },
       () => {}
     );
     return unsub;
@@ -209,6 +234,26 @@ export default function Room({ user, code, name, title, onBack }) {
       onBack();
     }
   }, [iAmRemoved]);
+
+  // If the group is locked and I was never a member, I can't get in
+  useEffect(() => {
+    if (locked && membersLoaded && !me && !isHost && !kickedRef.current) {
+      kickedRef.current = true;
+      window.alert("This group is locked by the host. Ask the host to unlock it so you can join.");
+      onBack();
+    }
+  }, [locked, membersLoaded, me]);
+
+  // Remember when this group was last read on this device (used for unread badges)
+  useEffect(() => {
+    const mark = () => {
+      try {
+        localStorage.setItem("sibiya-lastread:" + code, String(Date.now()));
+      } catch {}
+    };
+    mark();
+    return mark;
+  }, [code, messages.length]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -366,7 +411,7 @@ export default function Room({ user, code, name, title, onBack }) {
     }
   }
 
-  // ---- Host controls ----
+  // ---- Host and co-host controls ----
   async function setMemberFlag(uid, key, value) {
     setError("");
     try {
@@ -396,6 +441,53 @@ export default function Room({ user, code, name, title, onBack }) {
       await updateDoc(metaDoc(), { aiEnabled: !aiOn });
     } catch {
       setError("Couldn't change the AI setting. Try again.");
+    }
+  }
+
+  async function toggleLock() {
+    setError("");
+    try {
+      await updateDoc(metaDoc(), { locked: !locked });
+    } catch {
+      setError("Couldn't change the lock. Try again.");
+    }
+  }
+
+  async function toggleCoHost(m) {
+    setError("");
+    const is = coHosts.includes(m.id);
+    try {
+      await updateDoc(metaDoc(), { coHosts: is ? arrayRemove(m.id) : arrayUnion(m.id) });
+    } catch {
+      setError("Couldn't change co-hosts. Try again.");
+    }
+  }
+
+  async function pinText(text) {
+    const t = String(text || "").trim().slice(0, 500);
+    if (!t) return;
+    setError("");
+    try {
+      await updateDoc(metaDoc(), { pinned: { text: t, by: name } });
+    } catch {
+      setError("Couldn't pin that. Try again.");
+    }
+  }
+
+  function writePin() {
+    const t = window.prompt("Pinned note for the group:", pinned?.text || "");
+    if (t) {
+      pinText(t);
+      setShowPanel(false);
+    }
+  }
+
+  async function unpin() {
+    setError("");
+    try {
+      await updateDoc(metaDoc(), { pinned: deleteField() });
+    } catch {
+      setError("Couldn't unpin that. Try again.");
     }
   }
 
@@ -514,6 +606,7 @@ export default function Room({ user, code, name, title, onBack }) {
           <div className="font-bold text-[15px] truncate">{meta?.title || title || "Group chat"}</div>
           <div className="text-[10px] text-[#8A8580] tracking-wide truncate">
             Code: {code} · <span className="text-[#5FBF7A]">{onlineCount} online</span>
+            {locked && <span className="text-[#C9A44C]"> · 🔒 Locked</span>}
           </div>
         </div>
         <button
@@ -541,6 +634,25 @@ export default function Room({ user, code, name, title, onBack }) {
           {copied ? "Copied" : "Invite"}
         </button>
       </div>
+
+      {pinned && (
+        <div className="flex items-start gap-2 px-4 py-2 border-b border-[#1E1D1A] bg-[#161514]">
+          <Pin size={14} className="text-[#C9A44C] mt-0.5 shrink-0" />
+          <div className="flex-1 min-w-0 text-[13px] text-[#D8D2C4] whitespace-pre-wrap break-words max-h-24 overflow-y-auto">
+            {pinned.text}
+            {pinned.by && <span className="text-[10px] text-[#5C5850]"> · pinned by {pinned.by}</span>}
+          </div>
+          {isStaff && (
+            <button
+              onClick={unpin}
+              aria-label="Unpin"
+              className="w-6 h-6 shrink-0 rounded-full text-[#8A8580] hover:text-[#E07A66] flex items-center justify-center"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+      )}
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-5 space-y-3">
         {messages.length === 0 && !error && (
@@ -579,6 +691,7 @@ export default function Room({ user, code, name, title, onBack }) {
                   >
                     {m.name}
                     {m.uid === hostUid && " · Host"}
+                    {coHosts.includes(m.uid) && " · Co-host"}
                   </div>
                 )}
                 <div
@@ -657,7 +770,15 @@ export default function Room({ user, code, name, title, onBack }) {
 
                 <div className={`text-[10px] text-[#5C5850] mt-1 ${mine ? "text-right" : ""}`}>
                   {timeOf(m)}
-                  {(mine || isHost) && (
+                  {isStaff && !m.type && m.text && (
+                    <button
+                      onClick={() => pinText(m.text)}
+                      className="ml-2 text-[#5C5850] hover:text-[#C9A44C] underline"
+                    >
+                      Pin
+                    </button>
+                  )}
+                  {(mine || isStaff) && (
                     <button
                       onClick={() => removeMessage(m)}
                       className="ml-2 text-[#5C5850] hover:text-[#E07A66] underline"
@@ -786,21 +907,33 @@ export default function Room({ user, code, name, title, onBack }) {
               {onlineCount} online · {activeMembers.length} in group
             </div>
 
-            {isHost && (
+            {isStaff && (
               <div className="mb-4 space-y-2">
-                <button
-                  onClick={renameGroup}
-                  className="w-full flex items-center gap-2 rounded-xl border border-[#232019] bg-[#0B0B0C] px-4 py-2.5 text-[13px] text-[#F5F1E8]"
-                >
-                  <Pencil size={14} className="text-[#C9A44C]" />
-                  Rename group
-                </button>
-                <button
-                  onClick={toggleAI}
-                  className="w-full flex items-center gap-2 rounded-xl border border-[#232019] bg-[#0B0B0C] px-4 py-2.5 text-[13px] text-[#F5F1E8]"
-                >
+                {isHost && (
+                  <button onClick={renameGroup} className={BTN}>
+                    <Pencil size={14} className="text-[#C9A44C]" />
+                    Rename group
+                  </button>
+                )}
+                {isHost && (
+                  <button onClick={toggleLock} className={BTN}>
+                    {locked ? (
+                      <Lock size={14} className="text-[#C9A44C]" />
+                    ) : (
+                      <Unlock size={14} className="text-[#C9A44C]" />
+                    )}
+                    {locked
+                      ? "Group is LOCKED · tap to unlock"
+                      : "Group is OPEN · tap to lock (no new members)"}
+                  </button>
+                )}
+                <button onClick={toggleAI} className={BTN}>
                   <Bot size={14} className="text-[#C9A44C]" />
                   Sibiya AI is {aiOn ? "ON" : "OFF"} · tap to turn {aiOn ? "off" : "on"}
+                </button>
+                <button onClick={writePin} className={BTN}>
+                  <Pin size={14} className="text-[#C9A44C]" />
+                  {pinned ? "Change pinned note" : "Pin a note for the group"}
                 </button>
                 {liveCallId && (
                   <button
@@ -818,8 +951,10 @@ export default function Room({ user, code, name, title, onBack }) {
               {sortedMembers.map(m => {
                 const online = isOnline(m);
                 const isThisHost = m.id === hostUid;
+                const isThisCoHost = coHosts.includes(m.id);
                 const isMe = m.id === user.uid;
                 const seen = m.lastSeen?.toDate?.();
+                const manage = canManage(m);
                 return (
                   <div
                     key={m.id}
@@ -837,6 +972,7 @@ export default function Room({ user, code, name, title, onBack }) {
                           {isMe ? " (you)" : ""}
                         </span>
                         {isThisHost && <Crown size={13} className="text-[#C9A44C] shrink-0" />}
+                        {isThisCoHost && <ShieldCheck size={13} className="text-[#C9A44C] shrink-0" />}
                         {m.muted && <VolumeX size={13} className="text-[#E07A66] shrink-0" />}
                       </div>
                       <div className="text-[11px] text-[#5C5850]">
@@ -847,10 +983,20 @@ export default function Room({ user, code, name, title, onBack }) {
                             seen.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
                           : "Offline"}
                         {isThisHost ? " · Host" : ""}
+                        {isThisCoHost ? " · Co-host" : ""}
                       </div>
                     </div>
-                    {isHost && !isThisHost && !isMe && (
+                    {manage && (
                       <div className="flex gap-1 shrink-0">
+                        {isHost && (
+                          <button
+                            onClick={() => toggleCoHost(m)}
+                            aria-label={isThisCoHost ? "Remove co-host" : "Make co-host"}
+                            className="w-8 h-8 rounded-full border border-[#232019] text-[#C9A44C] flex items-center justify-center"
+                          >
+                            {isThisCoHost ? <ShieldCheck size={14} /> : <Shield size={14} />}
+                          </button>
+                        )}
                         <button
                           onClick={() => setMemberFlag(m.id, "muted", !m.muted)}
                           aria-label={m.muted ? "Unmute" : "Mute"}
@@ -872,7 +1018,7 @@ export default function Room({ user, code, name, title, onBack }) {
               })}
             </div>
 
-            {isHost && removedMembers.length > 0 && (
+            {isStaff && removedMembers.length > 0 && (
               <div className="mt-4">
                 <div className="text-[11px] uppercase tracking-widest text-[#8A8580] mb-2">
                   Removed
@@ -893,6 +1039,14 @@ export default function Room({ user, code, name, title, onBack }) {
               </div>
             )}
 
+            {isHost && (
+              <div className="mt-4 text-[11px] text-[#5C5850]">
+                Tap the shield next to a member to make them a co-host. Co-hosts can mute, remove,
+                pin, delete messages, switch the AI and end calls. Only you can lock the group,
+                rename it and manage co-hosts.
+              </div>
+            )}
+
             {!hostUid && (
               <div className="mt-4 text-[11px] text-[#5C5850]">
                 This group was created before host controls existed, so it has no host yet.
@@ -906,4 +1060,3 @@ export default function Room({ user, code, name, title, onBack }) {
     </div>
   );
 }
-
