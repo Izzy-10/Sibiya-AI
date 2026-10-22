@@ -5,11 +5,13 @@ html {
   min-height: 100%;
 }
 
-body {
-  background: transparent;
-  color: #F3E6CC;
+html body {
+  background: transparent !important;
+  color: #F3E6CC !important;
 }
 
+/* landscape picture with a light brown overlay.
+   To show more picture, lower the three 0.xx numbers. For more contrast, raise them. */
 body::before {
   content: "";
   position: fixed;
@@ -17,27 +19,35 @@ body::before {
   z-index: -1;
   pointer-events: none;
   background:
-    linear-gradient(180deg, rgba(26, 18, 10, 1) 0%, rgba(26, 18, 10, 0.94) 28%, rgba(26, 18, 10, 0.72) 60%, rgba(26, 18, 10, 0.6) 100%),
+    linear-gradient(180deg, rgba(26, 18, 10, 0.72) 0%, rgba(26, 18, 10, 0.5) 45%, rgba(26, 18, 10, 0.55) 100%),
     url("/bg.jpg") center bottom / cover no-repeat;
 }
 
 /* parchment text */
 p, li, .lead, .avail, .ans p, .ans li {
-  color: #E2CEB1;
+  color: #E2CEB1 !important;
 }
 .tagline, .muted, .foot-blurb {
-  color: #B5A284;
+  color: #C4B193 !important;
 }
 .foot-name, .foot-cols a {
-  color: #F3E6CC;
+  color: #F3E6CC !important;
 }
 .foot-bar, .updated {
-  color: #94816A;
+  color: #A8957D !important;
+}
+
+/* keep words readable over the picture */
+h1, h2, p, li, .lead, .tagline, .avail, .foot-blurb, .foot-bar, .quote {
+  text-shadow: 0 1px 3px rgba(20, 13, 7, 0.85);
+}
+.card p, .card h3, details p, details li, details summary {
+  text-shadow: none;
 }
 
 /* warm brown surfaces */
 details, .card {
-  background: rgba(39, 28, 15, 0.88);
+  background: rgba(39, 28, 15, 0.88) !important;
   border-color: rgba(226, 206, 177, 0.2);
   border-left-color: #A13D2D;
 }
@@ -48,10 +58,10 @@ details[open] {
   border-color: rgba(201, 164, 76, 0.5);
 }
 .note {
-  background: rgba(20, 13, 7, 0.7);
+  background: rgba(20, 13, 7, 0.7) !important;
 }
 .mark {
-  background: rgba(39, 28, 15, 0.88);
+  background: rgba(39, 28, 15, 0.88) !important;
 }
 
 /* parchment lines */
