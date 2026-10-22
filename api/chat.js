@@ -34,6 +34,42 @@ const anthropic = {
 const FIREBASE_API_KEY = "AIzaSyByw2cQQXcWjVl2ESpiPJ32-6VLETvBOx0";
 const OWNER_EMAIL = (process.env.OWNER_EMAIL || "").trim().toLowerCase();
 
+// ---- Rate limiting and message cleaning ----
+const hits = new Map();
+function tooMany(key, limit) {
+  const now = Date.now();
+  const arr = (hits.get(key) || []).filter(t => now - t < 60000);
+  arr.push(now);
+  hits.set(key, arr);
+  if (hits.size > 5000) hits.clear();
+  return arr.length > limit;
+}
+function clientIp(req) {
+  return String(req.headers["x-forwarded-for"] || "").split(",")[0].trim() || "unknown";
+}
+
+const ALLOWED_BLOCKS = new Set(["text", "image", "document"]);
+function cleanMessages(list, keep) {
+  return (Array.isArray(list) ? list : [])
+    .filter(m => m && (m.role === "user" || m.role === "assistant"))
+    .map(m => {
+      if (typeof m.content === "string") {
+        const text = m.content.slice(0, 8000);
+        return text.trim() ? { role: m.role, content: text } : null;
+      }
+      if (Array.isArray(m.content)) {
+        const blocks = m.content
+          .filter(b => b && ALLOWED_BLOCKS.has(b.type))
+          .map(b => (b.type === "text" ? { type: "text", text: String(b.text || "").slice(0, 8000) } : b))
+          .filter(b => b.type !== "text" || b.text.trim());
+        return blocks.length ? { role: m.role, content: blocks } : null;
+      }
+      return null;
+    })
+    .filter(Boolean)
+    .slice(keep);
+}
+
 const OWNER_PROMPT = `You are Sibiya AI, a warm, sharp assistant built for Sizwe Sicelimpilo Sibiya (aka Izzy, Nation) and his ventures.
 
 ABOUT SIZWE
@@ -105,6 +141,10 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: "Please sign in." });
   }
 
+  if (tooMany("u:" + user.uid, 30) || tooMany("ip:" + clientIp(req), 60)) {
+    return res.status(429).json({ error: "Too many messages. Wait a minute and try again." });
+  }
+
   try {
     const body = req.body || {};
 
@@ -124,7 +164,7 @@ export default async function handler(req, res) {
       const response = await anthropic.messages.create({
         model: "claude-sonnet-4-6",
         max_tokens: 600,
-                system: ROOM_PROMPT + FAMILY_KNOWLEDGE,
+        system: ROOM_PROMPT + FAMILY_KNOWLEDGE,
         messages: [{ role: "user", content: userMessage }],
       });
       return res.status(200).json(response);
@@ -136,9 +176,7 @@ export default async function handler(req, res) {
 
     const isOwner = !!OWNER_EMAIL && user.verified && user.email === OWNER_EMAIL;
 
-    let messages = (Array.isArray(body.messages) ? body.messages : [])
-      .filter(m => m && (m.role === "user" || m.role === "assistant"))
-      .slice(isOwner ? -40 : -20);
+    let messages = cleanMessages(body.messages, isOwner ? -40 : -20);
     while (messages.length && messages[0].role !== "user") messages.shift();
     if (!messages.length) {
       return res.status(400).json({ error: "No message to answer." });
@@ -147,7 +185,7 @@ export default async function handler(req, res) {
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: isOwner ? 1000 : 700,
-           system: (isOwner ? OWNER_PROMPT : generalPrompt(user.name)) + FAMILY_KNOWLEDGE,
+      system: (isOwner ? OWNER_PROMPT : generalPrompt(user.name)) + FAMILY_KNOWLEDGE,
       messages,
     });
     return res.status(200).json(response);
