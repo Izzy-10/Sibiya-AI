@@ -31,10 +31,10 @@ async function verifyUser(req) {
 async function readDoc(path, token) {
   try {
     const r = await fetch(`${FS}/${path}`, { headers: { Authorization: "Bearer " + token } });
-    if (r.status === 404) return { fields: {} };
+    if (r.status === 404) return { exists: false, fields: {} };
     if (!r.ok) return null;
     const d = await r.json();
-    return { fields: d.fields || {} };
+    return { exists: true, fields: d.fields || {} };
   } catch {
     return null;
   }
@@ -69,7 +69,7 @@ export default async function handler(req, res) {
     const code = rawCode.toLowerCase();
     const roomName = "sibiya-" + code;
 
-    // Is this person removed or muted in the group? Who is the host?
+    // This person's status in the group, and the group's host settings
     const member = await readDoc(`chats/${rawCode}/members/${encodeURIComponent(user.uid)}`, user.token);
     if (member && member.fields.removed && member.fields.removed.booleanValue === true) {
       return res.status(403).json({ error: "The host removed you from this group." });
@@ -77,15 +77,26 @@ export default async function handler(req, res) {
     const muted = !!(member && member.fields.muted && member.fields.muted.booleanValue === true);
 
     const meta = await readDoc(`chats/${rawCode}/info/meta`, user.token);
-    const hostUid = (meta && meta.fields.hostUid && meta.fields.hostUid.stringValue) || "";
+    const mf = (meta && meta.fields) || {};
+    const hostUid = (mf.hostUid && mf.hostUid.stringValue) || "";
+    const coHosts = ((mf.coHosts && mf.coHosts.arrayValue && mf.coHosts.arrayValue.values) || [])
+      .map(v => v.stringValue)
+      .filter(Boolean);
+    const locked = !!(mf.locked && mf.locked.booleanValue === true);
     const isHost = !!hostUid && hostUid === user.uid;
+    const isCoHost = coHosts.includes(user.uid);
+
+    // Locked group: only people who are already members can use the call
+    if (locked && member && !member.exists && !isHost) {
+      return res.status(403).json({ error: "This group is locked by the host." });
+    }
 
     const action = String(body.action || "join");
 
-    // Host-only: end the call for everyone, or drop one person from it
+    // Host and co-host: end the call for everyone, or drop one person from it
     if (action === "end" || action === "kick") {
-      if (!isHost) {
-        return res.status(403).json({ error: "Only the host can do that." });
+      if (!isHost && !isCoHost) {
+        return res.status(403).json({ error: "Only the host or a co-host can do that." });
       }
       const svc = new RoomServiceClient(url.replace(/^ws/, "http"), key, secret);
       try {
@@ -93,6 +104,12 @@ export default async function handler(req, res) {
           await svc.deleteRoom(roomName);
         } else {
           const target = String(body.target || "").slice(0, 128);
+          if (target === hostUid) {
+            return res.status(403).json({ error: "The host can't be removed." });
+          }
+          if (!isHost && coHosts.includes(target)) {
+            return res.status(403).json({ error: "Only the host can remove a co-host." });
+          }
           if (target) await svc.removeParticipant(roomName, target);
         }
       } catch {
