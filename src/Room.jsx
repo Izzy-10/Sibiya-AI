@@ -1,5 +1,23 @@
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Send, Share2, Check, Smile, Mic, Paperclip, Trash2, Phone } from "lucide-react";
+import {
+  ArrowLeft,
+  Send,
+  Share2,
+  Check,
+  Smile,
+  Mic,
+  Paperclip,
+  Trash2,
+  Phone,
+  Users,
+  Crown,
+  VolumeX,
+  Volume2,
+  UserX,
+  Bot,
+  Pencil,
+  X,
+} from "lucide-react";
 import {
   addDoc,
   arrayRemove,
@@ -8,6 +26,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   limitToLast,
   onSnapshot,
   orderBy,
@@ -29,6 +48,7 @@ import {
 import CallView from "./Call.jsx";
 
 const MENTION = /@sibiya\b/i;
+const ONLINE_WINDOW_MS = 75000;
 
 const REACTIONS = [
   { key: "like", emoji: "👍" },
@@ -45,8 +65,14 @@ function timeOf(m) {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
+function isOnline(m) {
+  const t = m.lastSeen?.toMillis?.() || 0;
+  return m.online === true && Date.now() - t < ONLINE_WINDOW_MS;
+}
+
 export default function Room({ user, code, name, title, onBack }) {
   const [messages, setMessages] = useState([]);
+  const [members, setMembers] = useState([]);
   const [meta, setMeta] = useState(null);
   const [input, setInput] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
@@ -55,19 +81,52 @@ export default function Room({ user, code, name, title, onBack }) {
   const [copied, setCopied] = useState(false);
   const [pickerFor, setPickerFor] = useState(null);
   const [inCall, setInCall] = useState(false);
+  const [showPanel, setShowPanel] = useState(false);
+  const [, setTick] = useState(0);
   const scrollRef = useRef(null);
   const messagesRef = useRef([]);
   const fileInputRef = useRef(null);
+  const kickedRef = useRef(false);
+
+  const hostUid = meta?.hostUid || "";
+  const isHost = !!hostUid && hostUid === user.uid;
+  const aiOn = meta?.aiEnabled !== false;
+  const me = members.find(m => m.id === user.uid);
+  const iAmRemoved = !!me?.removed;
+  const iAmMuted = !!me?.muted;
+  const activeMembers = members.filter(m => !m.removed);
+  const removedMembers = members.filter(m => m.removed);
+  const onlineCount = activeMembers.filter(isOnline).length;
+  const sortedMembers = [...activeMembers].sort(
+    (a, b) =>
+      (b.id === hostUid) - (a.id === hostUid) ||
+      isOnline(b) - isOnline(a) ||
+      String(a.name || "").localeCompare(String(b.name || ""))
+  );
 
   const recorder = useVoiceRecorder({
     onDone: v => sendMedia({ type: "voice", blob: v.blob, mime: v.mime, duration: v.duration }),
     onError: setError,
   });
 
+  function metaDoc() {
+    return doc(db, "chats", code, "info", "meta");
+  }
+
+  // Create the group info (and make the creator the host) the first time only
   useEffect(() => {
-    const metaRef = doc(db, "chats", code, "info", "meta");
+    const metaRef = metaDoc();
     if (title) {
-      setDoc(metaRef, { title, createdAt: serverTimestamp() }, { merge: true }).catch(() => {});
+      getDoc(metaRef)
+        .then(snap => {
+          if (snap.exists()) return;
+          return setDoc(metaRef, {
+            title,
+            hostUid: user.uid,
+            createdAt: serverTimestamp(),
+          });
+        })
+        .catch(() => {});
     }
     const unsubMeta = onSnapshot(
       metaRef,
@@ -97,6 +156,59 @@ export default function Room({ user, code, name, title, onBack }) {
       unsubMsgs();
     };
   }, [code, title]);
+
+  // Members list (who is in the group, who is online)
+  useEffect(() => {
+    const unsub = onSnapshot(
+      collection(db, "chats", code, "members"),
+      snap =>
+        setMembers(
+          snap.docs.map(d => ({ id: d.id, ...d.data({ serverTimestamps: "estimate" }) }))
+        ),
+      () => {}
+    );
+    return unsub;
+  }, [code]);
+
+  // Presence heartbeat: online while this screen is open and visible
+  useEffect(() => {
+    const ref = doc(db, "chats", code, "members", user.uid);
+    const beat = online =>
+      setDoc(
+        ref,
+        { uid: user.uid, name, lastSeen: serverTimestamp(), online },
+        { merge: true }
+      ).catch(() => {});
+    beat(true);
+    const iv = setInterval(() => {
+      if (!document.hidden) beat(true);
+    }, 30000);
+    const onVis = () => beat(!document.hidden);
+    const onHide = () => beat(false);
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("pagehide", onHide);
+    return () => {
+      clearInterval(iv);
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("pagehide", onHide);
+      beat(false);
+    };
+  }, [code, user.uid, name]);
+
+  // Re-check who is online every 15 seconds
+  useEffect(() => {
+    const iv = setInterval(() => setTick(t => t + 1), 15000);
+    return () => clearInterval(iv);
+  }, []);
+
+  // If the host removes me, leave the group
+  useEffect(() => {
+    if (iAmRemoved && !kickedRef.current) {
+      kickedRef.current = true;
+      window.alert("The host removed you from this group.");
+      onBack();
+    }
+  }, [iAmRemoved]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -138,6 +250,10 @@ export default function Room({ user, code, name, title, onBack }) {
   async function send() {
     const text = input.trim();
     if (!text) return;
+    if (iAmMuted) {
+      setError("The host has muted you in this group.");
+      return;
+    }
     setInput("");
     setError("");
     try {
@@ -153,10 +269,17 @@ export default function Room({ user, code, name, title, onBack }) {
       setInput(text);
       return;
     }
-    if (MENTION.test(text) && !aiBusy) askAI(name);
+    if (MENTION.test(text) && !aiBusy) {
+      if (aiOn) askAI(name);
+      else setError("The host turned Sibiya AI off in this group.");
+    }
   }
 
   async function sendMedia(info) {
+    if (iAmMuted) {
+      setError("The host has muted you in this group.");
+      return;
+    }
     setSending(true);
     setError("");
     try {
@@ -227,7 +350,11 @@ export default function Room({ user, code, name, title, onBack }) {
   }
 
   async function removeMessage(m) {
-    if (!window.confirm("Delete this message for everyone?")) return;
+    const ownMsg = m.uid === user.uid;
+    const ask = ownMsg
+      ? "Delete this message for everyone?"
+      : "Remove " + (m.name || "this person") + "'s message for everyone?";
+    if (!window.confirm(ask)) return;
     try {
       await deleteDoc(doc(db, "chats", code, "messages", m.id));
     } catch {
@@ -236,6 +363,41 @@ export default function Room({ user, code, name, title, onBack }) {
     }
     if (m.mediaId) {
       deleteDoc(doc(db, "chats", code, "media", m.mediaId)).catch(() => {});
+    }
+  }
+
+  // ---- Host controls ----
+  async function setMemberFlag(uid, key, value) {
+    setError("");
+    try {
+      await updateDoc(doc(db, "chats", code, "members", uid), { [key]: value });
+    } catch {
+      setError("Couldn't update that member. Try again.");
+    }
+  }
+
+  function removeMember(m) {
+    if (!window.confirm("Remove " + (m.name || "this person") + " from the group?")) return;
+    setMemberFlag(m.id, "removed", true);
+  }
+
+  async function toggleAI() {
+    setError("");
+    try {
+      await updateDoc(metaDoc(), { aiEnabled: !aiOn });
+    } catch {
+      setError("Couldn't change the AI setting. Try again.");
+    }
+  }
+
+  async function renameGroup() {
+    const t = window.prompt("New group name:", meta?.title || title || "");
+    if (!t || !t.trim()) return;
+    setError("");
+    try {
+      await updateDoc(metaDoc(), { title: t.trim().slice(0, 40) });
+    } catch {
+      setError("Couldn't rename the group. Try again.");
     }
   }
 
@@ -321,8 +483,20 @@ export default function Room({ user, code, name, title, onBack }) {
         </button>
         <div className="flex-1 min-w-0">
           <div className="font-bold text-[15px] truncate">{meta?.title || title || "Group chat"}</div>
-          <div className="text-[10px] text-[#8A8580] tracking-wide truncate">Code: {code}</div>
+          <div className="text-[10px] text-[#8A8580] tracking-wide truncate">
+            Code: {code} · <span className="text-[#5FBF7A]">{onlineCount} online</span>
+          </div>
         </div>
+        <button
+          onClick={() => setShowPanel(true)}
+          aria-label="Members"
+          className="relative w-9 h-9 shrink-0 rounded-full border border-[#C9A44C]/50 text-[#C9A44C] flex items-center justify-center"
+        >
+          <Users size={16} />
+          <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-[#5FBF7A] text-[#0B0B0C] text-[10px] font-bold flex items-center justify-center">
+            {onlineCount}
+          </span>
+        </button>
         <button
           onClick={startCall}
           aria-label="Start or join a call"
@@ -375,6 +549,7 @@ export default function Room({ user, code, name, title, onBack }) {
                     }`}
                   >
                     {m.name}
+                    {m.uid === hostUid && " · Host"}
                   </div>
                 )}
                 <div
@@ -453,7 +628,7 @@ export default function Room({ user, code, name, title, onBack }) {
 
                 <div className={`text-[10px] text-[#5C5850] mt-1 ${mine ? "text-right" : ""}`}>
                   {timeOf(m)}
-                  {mine && (
+                  {(mine || isHost) && (
                     <button
                       onClick={() => removeMessage(m)}
                       className="ml-2 text-[#5C5850] hover:text-[#E07A66] underline"
@@ -483,6 +658,11 @@ export default function Room({ user, code, name, title, onBack }) {
         style={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))" }}
       >
         {error && <div className="text-[12px] text-[#E07A66] mb-2">{error}</div>}
+        {iAmMuted && (
+          <div className="text-[12px] text-[#C9A44C] mb-2">
+            The host has muted you. You can read the chat but not send.
+          </div>
+        )}
 
         {recorder.recording ? (
           <div className="flex items-center gap-3 bg-[#161514] border border-[#A13D2D]/60 rounded-2xl px-4 py-2.5">
@@ -511,7 +691,7 @@ export default function Room({ user, code, name, title, onBack }) {
             <input ref={fileInputRef} type="file" onChange={pickFile} className="hidden" />
             <button
               onClick={() => fileInputRef.current?.click()}
-              disabled={sending}
+              disabled={sending || iAmMuted}
               aria-label="Attach file"
               className="w-8 h-8 shrink-0 mb-1 rounded-full text-[#8A8580] hover:text-[#C9A44C] disabled:opacity-40 flex items-center justify-center transition-colors"
             >
@@ -521,7 +701,8 @@ export default function Room({ user, code, name, title, onBack }) {
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKey}
-              placeholder="Message the group..."
+              placeholder={iAmMuted ? "You are muted by the host" : "Message the group..."}
+              disabled={iAmMuted}
               rows={1}
               className="flex-1 bg-transparent resize-none outline-none text-[14px] py-2 placeholder:text-[#5C5850] max-h-32"
             />
@@ -536,7 +717,7 @@ export default function Room({ user, code, name, title, onBack }) {
             ) : (
               <button
                 onClick={recorder.start}
-                disabled={sending}
+                disabled={sending || iAmMuted}
                 aria-label="Record voice note"
                 className="w-8 h-8 shrink-0 mb-1 rounded-full bg-[#C9A44C] disabled:bg-[#2A2823] disabled:text-[#5C5850] text-[#0B0B0C] flex items-center justify-center transition-colors"
               >
@@ -548,9 +729,140 @@ export default function Room({ user, code, name, title, onBack }) {
 
         {sending && <div className="text-center text-[11px] text-[#8A8580] mt-2">Sending...</div>}
         <div className="text-center text-[10px] text-[#5C5850] mt-2 tracking-wide">
-          Type @sibiya to ask the AI
+          {aiOn ? "Type @sibiya to ask the AI" : "Sibiya AI is off in this group"}
         </div>
       </div>
+
+      {showPanel && (
+        <div
+          className="fixed inset-0 z-40 flex items-end justify-center bg-black/60"
+          onClick={() => setShowPanel(false)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className="w-full max-w-md max-h-[80dvh] overflow-y-auto bg-[#161514] border border-[#232019] rounded-t-3xl p-5"
+            style={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))" }}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <div className="font-bold text-[16px]">Members</div>
+              <button
+                onClick={() => setShowPanel(false)}
+                aria-label="Close"
+                className="w-8 h-8 rounded-full text-[#8A8580] hover:text-[#C9A44C] flex items-center justify-center"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="text-[12px] text-[#5FBF7A] mb-4">
+              {onlineCount} online · {activeMembers.length} in group
+            </div>
+
+            {isHost && (
+              <div className="mb-4 space-y-2">
+                <button
+                  onClick={renameGroup}
+                  className="w-full flex items-center gap-2 rounded-xl border border-[#232019] bg-[#0B0B0C] px-4 py-2.5 text-[13px] text-[#F5F1E8]"
+                >
+                  <Pencil size={14} className="text-[#C9A44C]" />
+                  Rename group
+                </button>
+                <button
+                  onClick={toggleAI}
+                  className="w-full flex items-center gap-2 rounded-xl border border-[#232019] bg-[#0B0B0C] px-4 py-2.5 text-[13px] text-[#F5F1E8]"
+                >
+                  <Bot size={14} className="text-[#C9A44C]" />
+                  Sibiya AI is {aiOn ? "ON" : "OFF"} · tap to turn {aiOn ? "off" : "on"}
+                </button>
+              </div>
+            )}
+
+            <div className="space-y-1">
+              {sortedMembers.map(m => {
+                const online = isOnline(m);
+                const isThisHost = m.id === hostUid;
+                const isMe = m.id === user.uid;
+                const seen = m.lastSeen?.toDate?.();
+                return (
+                  <div
+                    key={m.id}
+                    className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-[#0B0B0C]"
+                  >
+                    <span
+                      className={`w-2.5 h-2.5 shrink-0 rounded-full ${
+                        online ? "bg-[#5FBF7A]" : "bg-[#3A3731]"
+                      }`}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[14px] truncate flex items-center gap-1.5">
+                        <span className="truncate">
+                          {m.name || "Someone"}
+                          {isMe ? " (you)" : ""}
+                        </span>
+                        {isThisHost && <Crown size={13} className="text-[#C9A44C] shrink-0" />}
+                        {m.muted && <VolumeX size={13} className="text-[#E07A66] shrink-0" />}
+                      </div>
+                      <div className="text-[11px] text-[#5C5850]">
+                        {online
+                          ? "Online"
+                          : seen
+                          ? "Last seen " +
+                            seen.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                          : "Offline"}
+                        {isThisHost ? " · Host" : ""}
+                      </div>
+                    </div>
+                    {isHost && !isThisHost && !isMe && (
+                      <div className="flex gap-1 shrink-0">
+                        <button
+                          onClick={() => setMemberFlag(m.id, "muted", !m.muted)}
+                          aria-label={m.muted ? "Unmute" : "Mute"}
+                          className="w-8 h-8 rounded-full border border-[#232019] text-[#C9A44C] flex items-center justify-center"
+                        >
+                          {m.muted ? <Volume2 size={14} /> : <VolumeX size={14} />}
+                        </button>
+                        <button
+                          onClick={() => removeMember(m)}
+                          aria-label="Remove from group"
+                          className="w-8 h-8 rounded-full border border-[#232019] text-[#E07A66] flex items-center justify-center"
+                        >
+                          <UserX size={14} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {isHost && removedMembers.length > 0 && (
+              <div className="mt-4">
+                <div className="text-[11px] uppercase tracking-widest text-[#8A8580] mb-2">
+                  Removed
+                </div>
+                {removedMembers.map(m => (
+                  <div key={m.id} className="flex items-center gap-3 px-2 py-1.5">
+                    <div className="flex-1 text-[13px] text-[#8A8580] truncate">
+                      {m.name || "Someone"}
+                    </div>
+                    <button
+                      onClick={() => setMemberFlag(m.id, "removed", false)}
+                      className="text-[12px] rounded-full px-3 py-1 border border-[#C9A44C]/50 text-[#C9A44C]"
+                    >
+                      Let back in
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {!hostUid && (
+              <div className="mt-4 text-[11px] text-[#5C5850]">
+                This group was created before host controls existed, so it has no host yet.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {inCall && <CallView code={code} name={name} onClose={() => setInCall(false)} />}
     </div>
