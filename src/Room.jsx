@@ -377,8 +377,17 @@ export default function Room({ user, code, name, title, onBack }) {
   }
 
   function removeMember(m) {
-    if (!window.confirm("Remove " + (m.name || "this person") + " from the group?")) return;
+      if (!window.confirm("Remove " + (m.name || "this person") + " from the group?")) return;
     setMemberFlag(m.id, "removed", true);
+    getToken()
+      .then(token =>
+        fetch("/api/call", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+          body: JSON.stringify({ code, action: "kick", target: m.id }),
+        })
+      )
+      .catch(() => {});
   }
 
   async function toggleAI() {
@@ -387,6 +396,25 @@ export default function Room({ user, code, name, title, onBack }) {
       await updateDoc(metaDoc(), { aiEnabled: !aiOn });
     } catch {
       setError("Couldn't change the AI setting. Try again.");
+    }
+  }
+
+   async function endCallForAll() {
+    if (!window.confirm("End the call for everyone?")) return;
+    setError("");
+    try {
+      const token = await getToken();
+      const res = await fetch("/api/call", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+        body: JSON.stringify({ code, action: "end" }),
+      });
+      if (!res.ok) throw new Error("api " + res.status);
+      await updateDoc(metaDoc(), { callEndedAt: serverTimestamp() });
+      setInCall(false);
+      setShowPanel(false);
+    } catch {
+      setError("Couldn't end the call. Try again.");
     }
   }
 
@@ -456,7 +484,8 @@ export default function Room({ user, code, name, title, onBack }) {
   for (let i = messages.length - 1; i >= 0; i--) {
     if (messages[i].type === "call") {
       const t = messages[i].createdAt?.toMillis?.() || nowMs;
-      if (nowMs - t < 2 * 60 * 60 * 1000) liveCallId = messages[i].id;
+            const endedAt = meta?.callEndedAt?.toMillis?.() || 0;
+      if (nowMs - t < 2 * 60 * 60 * 1000 && t > endedAt) liveCallId = messages[i].id;
       break;
     }
   }
@@ -771,8 +800,17 @@ export default function Room({ user, code, name, title, onBack }) {
                   className="w-full flex items-center gap-2 rounded-xl border border-[#232019] bg-[#0B0B0C] px-4 py-2.5 text-[13px] text-[#F5F1E8]"
                 >
                   <Bot size={14} className="text-[#C9A44C]" />
-                  Sibiya AI is {aiOn ? "ON" : "OFF"} · tap to turn {aiOn ? "off" : "on"}
+                                   Sibiya AI is {aiOn ? "ON" : "OFF"} · tap to turn {aiOn ? "off" : "on"}
                 </button>
+                {liveCallId && (
+                  <button
+                    onClick={endCallForAll}
+                    className="w-full flex items-center gap-2 rounded-xl border border-[#A13D2D]/60 bg-[#0B0B0C] px-4 py-2.5 text-[13px] text-[#E07A66]"
+                  >
+                    <Phone size={14} />
+                    End call for everyone
+                  </button>
+                )}
               </div>
             )}
 
