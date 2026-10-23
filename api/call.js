@@ -1,4 +1,6 @@
-import { AccessToken, RoomServiceClient } from "livekit-server-sdk";
+import * as LK from "livekit-server-sdk";
+
+const { AccessToken, RoomServiceClient } = LK;
 
 const FIREBASE_API_KEY = "AIzaSyByw2cQQXcWjVl2ESpiPJ32-6VLETvBOx0";
 const PROJECT_ID = "sibiya-ai";
@@ -13,7 +15,7 @@ async function verifyUser(req) {
       `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_API_KEY}`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Referer: "https://sibiya-ai.vercel.app/" },
         body: JSON.stringify({ idToken: token }),
       }
     );
@@ -124,16 +126,28 @@ export default async function handler(req, res) {
         .trim()
         .slice(0, 24) || "Guest";
 
-    const at = new AccessToken(key, secret, { identity: user.uid, name, ttl: 21600 });
-    at.addGrant({
+    const staff = isHost || isCoHost;
+    const role = isHost ? "host" : isCoHost ? "co-host" : "member";
+
+    const grant = {
       roomJoin: true,
       room: roomName,
       canPublish: !muted,
       canSubscribe: true,
-    });
+    };
+    // Everyone can use mic and camera; only host and co-hosts can share their screen.
+    // (Skipped quietly on an older LiveKit SDK that has no TrackSource.)
+    const TS = LK.TrackSource;
+    if (TS && TS.MICROPHONE !== undefined) {
+      grant.canPublishSources = [TS.MICROPHONE, TS.CAMERA];
+      if (staff) grant.canPublishSources.push(TS.SCREEN_SHARE, TS.SCREEN_SHARE_AUDIO);
+    }
+
+    const at = new AccessToken(key, secret, { identity: user.uid, name, ttl: 21600 });
+    at.addGrant(grant);
     const token = await at.toJwt();
 
-    return res.status(200).json({ token, url });
+    return res.status(200).json({ token, url, role, canScreenShare: staff && !muted, muted });
   } catch (error) {
     console.error("Sibiya AI call error:", error);
     return res.status(500).json({ error: "Couldn't start the call." });
