@@ -405,6 +405,7 @@ export default function Lobby({ user, authError, initialCode, onEnterRoom, onSol
           <div className="grid grid-cols-2 gap-6 mt-8">
             <div className="space-y-2.5">
               <div className="text-[10px] uppercase tracking-widest text-[#C9A44C]">Pages</div>
+              <a href="/landing.html" className="block text-[13px] hover:text-[#C9A44C]">Home</a>
               <a href="/about.html" className="block text-[13px] hover:text-[#C9A44C]">About</a>
               <a href="/support.html" className="block text-[13px] hover:text-[#C9A44C]">Support</a>
               <a href="/privacy.html" className="block text-[13px] hover:text-[#C9A44C]">Privacy</a>
