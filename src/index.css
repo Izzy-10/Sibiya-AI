@@ -1,4 +1,6 @@
-/* src/index.css — Global Sibiya AI theme */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 * {
   box-sizing: border-box;
@@ -7,16 +9,15 @@
 html, body, #root {
   margin: 0;
   padding: 0;
-  min-height: 100%;
+  min-height: 100vh;
   width: 100%;
 }
 
 body {
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   background-color: #0B0B0C;
-  /* YOUR BACKGROUND - used in ALL files */
   background-image: 
-    linear-gradient(rgba(11, 11, 12, 0.75), rgba(18, 14, 10, 0.85)),
+    linear-gradient(rgba(11, 11, 12, 0.78), rgba(18, 14, 10, 0.88)),
     url('/bg.jpg');
   background-size: cover;
   background-position: center;
@@ -26,12 +27,12 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Make all main containers transparent so bg shows through */
 #root {
   background: transparent;
+  min-height: 100vh;
 }
 
-/* Scrollbar - gold theme */
+/* Gold scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
 }
@@ -44,14 +45,4 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #C9A44C;
-}
-
-/* Remove that white background you have in screenshot */
-main, section, .page {
-  background: transparent !important;
-}
-
-/* Cards keep dark brown but semi-transparent so bg peeks */
-[class*="bg-[#"] {
-  backdrop-filter: blur(8px);
 }
