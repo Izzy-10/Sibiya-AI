@@ -1,8 +1,21 @@
-import { useState } from "react";
-import { Share2, Check } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Share2, Check, X, Bell, BellOff } from "lucide-react";
+import {
+  collection,
+  doc,
+  limit,
+  onSnapshot,
+  orderBy,
+  query,
+  Timestamp,
+  where,
+} from "firebase/firestore";
+import { db } from "./firebase.js";
 import Logo from "./Logo.jsx";
+import { getSoundOn, playChime, setSoundOn } from "./sound.js";
 
 const ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
+const GROUPS_KEY = "sibiya_groups";
 
 function makeCode() {
   const bytes = new Uint8Array(10);
@@ -29,6 +42,32 @@ function saveName(n) {
   } catch {}
 }
 
+// Groups this device has opened (kept on this device only)
+function loadGroups() {
+  try {
+    const a = JSON.parse(localStorage.getItem(GROUPS_KEY) || "[]");
+    return Array.isArray(a)
+      ? a.filter(g => g && typeof g.code === "string").slice(0, 20)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveGroups(list) {
+  try {
+    localStorage.setItem(GROUPS_KEY, JSON.stringify(list.slice(0, 20)));
+  } catch {}
+}
+
+function rememberGroup(code, title) {
+  const all = loadGroups();
+  const old = all.find(g => g.code === code);
+  const rest = all.filter(g => g.code !== code);
+  rest.unshift({ code, title: title || old?.title || "", at: Date.now() });
+  saveGroups(rest);
+}
+
 function niceName(u) {
   if (!u.displayName) return u.email || "";
   return u.displayName.replace(/(^|\s)(\p{L})/gu, (m, a, b) => a + b.toUpperCase());
@@ -43,12 +82,93 @@ const outlineBtn =
 const cardCls = "rounded-2xl border border-[#232019] bg-[#161514] p-4 space-y-3";
 const labelCls = "text-[10px] uppercase tracking-widest text-[#C9A44C]";
 
+// One row in "Your groups": shows the group name and how many new messages
+function GroupRow({ g, user, onOpen, onForget, onTitle }) {
+  const [unread, setUnread] = useState(0);
+  const [title, setTitle] = useState(g.title || "");
+
+  useEffect(() => {
+    const unsubMeta = onSnapshot(
+      doc(db, "chats", g.code, "info", "meta"),
+      snap => {
+        const t = snap.exists() ? snap.data().title : "";
+        if (t) {
+          setTitle(t);
+          onTitle(g.code, t);
+        }
+      },
+      () => {}
+    );
+
+    let since = 0;
+    try {
+      since = Number(localStorage.getItem("sibiya-lastread:" + g.code)) || 0;
+    } catch {}
+    if (!since) since = g.at || Date.now();
+
+    const q = query(
+      collection(db, "chats", g.code, "messages"),
+      where("createdAt", ">", Timestamp.fromMillis(since)),
+      orderBy("createdAt", "desc"),
+      limit(10)
+    );
+    let first = true;
+    let prev = 0;
+    const unsubMsgs = onSnapshot(
+      q,
+      snap => {
+        const n = snap.docs.filter(d => d.data().uid !== user.uid).length;
+        if (!first && n > prev) playChime();
+        first = false;
+        prev = n;
+        setUnread(n);
+      },
+      () => setUnread(0)
+    );
+
+    return () => {
+      unsubMeta();
+      unsubMsgs();
+    };
+  }, [g.code, user.uid]);
+
+  return (
+    <div className="flex items-center gap-1 rounded-xl border border-[#232019] bg-[#0B0B0C] pl-3 pr-1">
+      <button
+        onClick={() => onOpen(g)}
+        className="flex-1 min-w-0 flex items-center gap-3 py-2.5 text-left"
+      >
+        <div className="flex-1 min-w-0">
+          <div className={`text-[14px] truncate ${unread > 0 ? "font-bold" : ""}`}>
+            {title || "Group chat"}
+          </div>
+          <div className="text-[10px] text-[#5C5850] tracking-wide truncate">{g.code}</div>
+        </div>
+        {unread > 0 && (
+          <span className="min-w-[22px] h-[22px] px-1.5 rounded-full bg-[#C9A44C] text-[#0B0B0C] text-[11px] font-bold flex items-center justify-center">
+            {unread >= 10 ? "9+" : unread}
+          </span>
+        )}
+      </button>
+      <button
+        onClick={() => onForget(g)}
+        aria-label="Remove from this list"
+        className="w-8 h-8 shrink-0 rounded-full text-[#5C5850] hover:text-[#E07A66] flex items-center justify-center"
+      >
+        <X size={14} />
+      </button>
+    </div>
+  );
+}
+
 export default function Lobby({ user, authError, initialCode, onEnterRoom, onSolo, onSignOut }) {
   const [name, setName] = useState(loadName);
   const [title, setTitle] = useState("");
   const [code, setCode] = useState(initialCode || "");
   const [error, setError] = useState("");
   const [shared, setShared] = useState(false);
+  const [groups, setGroups] = useState(loadGroups);
+  const [soundEnabled, setSoundEnabled] = useState(getSoundOn);
   const ready = !!user;
 
   function requireName() {
@@ -65,7 +185,10 @@ export default function Lobby({ user, authError, initialCode, onEnterRoom, onSol
   function create() {
     const n = requireName();
     if (!n) return;
-    onEnterRoom(makeCode(), n, title.trim() || "Sibiya group");
+    const newCode = makeCode();
+    const t = title.trim() || "Sibiya group";
+    rememberGroup(newCode, t);
+    onEnterRoom(newCode, n, t);
   }
 
   function join() {
@@ -76,7 +199,38 @@ export default function Lobby({ user, authError, initialCode, onEnterRoom, onSol
       setError("That code looks too short.");
       return;
     }
+    rememberGroup(c, "");
     onEnterRoom(c, n, "");
+  }
+
+  function openGroup(g) {
+    const n = requireName();
+    if (!n) return;
+    rememberGroup(g.code, g.title);
+    onEnterRoom(g.code, n, "");
+  }
+
+  function forgetGroup(g) {
+    if (!window.confirm("Remove this group from your list? You can join again with the code.")) return;
+    const next = groups.filter(x => x.code !== g.code);
+    saveGroups(next);
+    setGroups(next);
+  }
+
+  function updateTitle(groupCode, t) {
+    setGroups(list => {
+      if (!list.some(g => g.code === groupCode && g.title !== t)) return list;
+      const next = list.map(g => (g.code === groupCode ? { ...g, title: t } : g));
+      saveGroups(next);
+      return next;
+    });
+  }
+
+  function toggleSound() {
+    const next = !soundEnabled;
+    setSoundOn(next);
+    setSoundEnabled(next);
+    if (next) playChime();
   }
 
   async function shareApp() {
@@ -152,6 +306,37 @@ export default function Lobby({ user, authError, initialCode, onEnterRoom, onSol
           />
           {error && <div className="text-[12px] text-[#E07A66]">{error}</div>}
         </div>
+
+        {user && groups.length > 0 && (
+          <div className={cardCls}>
+            <div className="flex items-center justify-between">
+              <div className={labelCls}>Your groups</div>
+              <button
+                onClick={toggleSound}
+                aria-label={soundEnabled ? "Turn message sound off" : "Turn message sound on"}
+                className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-[#8A8580] hover:text-[#C9A44C]"
+              >
+                {soundEnabled ? <Bell size={13} /> : <BellOff size={13} />}
+                Sound {soundEnabled ? "on" : "off"}
+              </button>
+            </div>
+            <div className="space-y-2">
+              {groups.slice(0, 15).map(g => (
+                <GroupRow
+                  key={g.code}
+                  g={g}
+                  user={user}
+                  onOpen={openGroup}
+                  onForget={forgetGroup}
+                  onTitle={updateTitle}
+                />
+              ))}
+            </div>
+            <div className="text-[11px] text-[#5C5850]">
+              A gold number means new messages since you last opened that group on this device.
+            </div>
+          </div>
+        )}
 
         <div className={cardCls}>
           <div className={labelCls}>Chat with Sibiya AI</div>
