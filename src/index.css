@@ -1,84 +1,57 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* src/index.css — Global Sibiya AI theme */
 
-/* ===== Sibiya AI theme: Umlando (parchment, espresso brown, ochre) =====
-   Delete everything below this line to go back to the black and gold look. */
-
-html {
-  background: #20160C;
+* {
+  box-sizing: border-box;
 }
 
-body {
+html, body, #root {
   margin: 0;
-  color: #F3E6CC;
-  background: linear-gradient(180deg, #1A120A 0%, #271C0F 55%, #3D3220 100%) fixed;
-}
-
-/* the landscape: hills, river, huts, acacia and cattle */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' viewBox='0 0 800 480'%3E %3Cdefs%3E %3CradialGradient id='sun' cx='0.5' cy='0.5' r='0.5'%3E %3Cstop offset='0' stop-color='%23E2CEB1' stop-opacity='0.28'/%3E %3Cstop offset='1' stop-color='%23E2CEB1' stop-opacity='0'/%3E %3C/radialGradient%3E %3Cg id='cow'%3E %3Crect x='18' y='14' width='56' height='26' rx='12'/%3E %3Cellipse cx='63' cy='14' rx='9' ry='7'/%3E %3Cpath d='M70 18 L84 22 L86 34 L74 36 Z'/%3E %3Cellipse cx='88' cy='30' rx='8' ry='5.5'/%3E %3Crect x='25' y='36' width='5' height='20'/%3E %3Crect x='36' y='36' width='5' height='20'/%3E %3Crect x='58' y='36' width='5' height='20'/%3E %3Crect x='68' y='36' width='5' height='20'/%3E %3Cpath d='M84 24 C 82 10 94 6 98 14' fill='none' stroke-width='3' stroke-linecap='round'/%3E %3Cpath d='M18 20 C 8 26 8 38 11 48' fill='none' stroke-width='2.5' stroke-linecap='round'/%3E %3C/g%3E %3C/defs%3E %3Ccircle cx='620' cy='150' r='110' fill='url(%23sun)'/%3E %3Cpath d='M0 250 C 100 200 180 230 280 215 C 400 195 470 240 580 220 C 670 205 740 225 800 210 L800 480 L0 480 Z' fill='%2376562F' opacity='0.6'/%3E %3Cpath d='M0 300 C 120 260 220 290 340 275 C 450 262 560 300 680 280 C 740 270 780 280 800 276 L800 480 L0 480 Z' fill='%234E381B' opacity='0.9'/%3E %3Cpath d='M420 480 C 380 430 450 400 400 360 C 360 330 420 300 380 282' fill='none' stroke='%23B9A78E' stroke-width='16' stroke-linecap='round' opacity='0.22'/%3E %3Cpath d='M420 480 C 380 430 450 400 400 360 C 360 330 420 300 380 282' fill='none' stroke='%23DECAAC' stroke-width='6' stroke-linecap='round' opacity='0.32'/%3E %3Cpath d='M0 372 C 140 342 260 382 400 366 C 560 348 680 386 800 362 L800 480 L0 480 Z' fill='%233A2812'/%3E %3Cg%3E %3Crect x='612' y='336' width='62' height='30' fill='%237A5A33'/%3E %3Cpath d='M598 338 L643 294 L688 338 Z' fill='%238C6A38'/%3E %3Cpath d='M612 332 L643 302 M626 334 L643 310 M660 334 L643 310 M674 332 L643 302' stroke='%235D4225' stroke-width='2' fill='none'/%3E %3Crect x='636' y='344' width='14' height='22' fill='%2320160C'/%3E %3Crect x='548' y='350' width='40' height='20' fill='%237A5A33'/%3E %3Cpath d='M540 352 L568 322 L596 352 Z' fill='%238C6A38'/%3E %3C/g%3E %3Cg%3E %3Cpath d='M108 376 C 106 354 110 342 113 322' fill='none' stroke='%23140D07' stroke-width='6' stroke-linecap='round'/%3E %3Cpath d='M113 332 L82 314 M113 332 L148 312' fill='none' stroke='%23140D07' stroke-width='3' stroke-linecap='round'/%3E %3Cellipse cx='113' cy='306' rx='58' ry='14' fill='%233E5A2E' opacity='0.8'/%3E %3Cellipse cx='90' cy='300' rx='30' ry='9' fill='%234C6B38' opacity='0.7'/%3E %3C/g%3E %3Cg fill='%230F0905' stroke='%230F0905'%3E %3Cuse xlink:href='%23cow' transform='translate(190 388)'/%3E %3Cuse xlink:href='%23cow' transform='translate(300 400) scale(1.15)'/%3E %3Cuse xlink:href='%23cow' transform='translate(540 394) scale(-0.9 0.9)'/%3E %3Cuse xlink:href='%23cow' transform='translate(690 404) scale(-1.1 1.1)'/%3E %3C/g%3E %3C/svg%3E") center bottom / 100% auto no-repeat;
-  opacity: 0.55;
-}
-
-/* let the main screens show the landscape behind them */
-.min-h-\[100dvh\].bg-\[\#0B0B0C\],
-.h-\[100dvh\].bg-\[\#0B0B0C\] {
-  background-color: transparent;
-}
-.fixed.inset-0.bg-\[\#0B0B0C\] {
-  background-color: #20160C;
-}
-
-/* warm brown surfaces */
-.bg-\[\#161514\] {
-  background-color: rgba(39, 28, 15, 0.88);
-}
-input.bg-\[\#0B0B0C\] {
-  background-color: rgba(20, 13, 7, 0.7);
-}
-
-/* parchment lines */
-.border-\[\#232019\] {
-  border-color: rgba(226, 206, 177, 0.2);
-}
-.border-\[\#1E1D1A\] {
-  border-color: rgba(226, 206, 177, 0.14);
-}
-
-/* parchment text */
-.text-\[\#F5F1E8\] {
-  color: #F3E6CC;
-}
-.text-\[\#D8D2C4\] {
-  color: #E2CEB1;
-}
-.text-\[\#8A8580\] {
-  color: #B5A284;
-}
-.text-\[\#5C5850\] {
-  color: #94816A;
-}
-.placeholder\:text-\[\#5C5850\]::placeholder {
-  color: #94816A;
-}
-
-/* Umlando picture background */
-html {
-  background: linear-gradient(180deg, #1A120A 0%, #271C0F 55%, #3D3220 100%) fixed;
+  padding: 0;
   min-height: 100%;
+  width: 100%;
 }
+
 body {
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background-color: #0B0B0C;
+  /* YOUR BACKGROUND - used in ALL files */
+  background-image: 
+    linear-gradient(rgba(11, 11, 12, 0.75), rgba(18, 14, 10, 0.85)),
+    url('/bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  color: #F5F1E8;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Make all main containers transparent so bg shows through */
+#root {
   background: transparent;
 }
-body::before {
-  background:
-    linear-gradient(180deg, rgba(26, 18, 10, 1) 0%, rgba(26, 18, 10, 0.94) 28%, rgba(26, 18, 10, 0.62) 60%, rgba(26, 18, 10, 0.5) 100%),
-    url("/bg.jpg") center bottom / cover no-repeat;
-  opacity: 1;
+
+/* Scrollbar - gold theme */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #161514;
+}
+::-webkit-scrollbar-thumb {
+  background: #3A352D;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #C9A44C;
+}
+
+/* Remove that white background you have in screenshot */
+main, section, .page {
+  background: transparent !important;
+}
+
+/* Cards keep dark brown but semi-transparent so bg peeks */
+[class*="bg-[#"] {
+  backdrop-filter: blur(8px);
 }
