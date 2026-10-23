@@ -22,6 +22,8 @@ import {
   Pin,
   Shield,
   ShieldCheck,
+  Bell,
+  BellOff,
 } from "lucide-react";
 import {
   addDoc,
@@ -52,6 +54,7 @@ import {
   useVoiceRecorder,
 } from "./Media.jsx";
 import CallView from "./Call.jsx";
+import { getSoundOn, playChime, setSoundOn } from "./sound.js";
 
 const MENTION = /@sibiya\b/i;
 const ONLINE_WINDOW_MS = 75000;
@@ -92,6 +95,7 @@ export default function Room({ user, code, name, title, onBack }) {
   const [pickerFor, setPickerFor] = useState(null);
   const [inCall, setInCall] = useState(false);
   const [showPanel, setShowPanel] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(getSoundOn);
   const [, setTick] = useState(0);
   const scrollRef = useRef(null);
   const messagesRef = useRef([]);
@@ -161,9 +165,20 @@ export default function Room({ user, code, name, title, onBack }) {
       orderBy("createdAt", "asc"),
       limitToLast(100)
     );
+    let firstSnap = true;
     const unsubMsgs = onSnapshot(
       q,
       snap => {
+        if (!firstSnap) {
+          const incoming = snap.docChanges().some(c => {
+            if (c.type !== "added" || c.doc.metadata.hasPendingWrites) return false;
+            const d = c.doc.data({ serverTimestamps: "estimate" });
+            const t = d.createdAt?.toMillis?.() || 0;
+            return d.uid !== user.uid && Date.now() - t < 20000;
+          });
+          if (incoming) playChime();
+        }
+        firstSnap = false;
         const list = snap.docs.map(d => ({
           id: d.id,
           ...d.data({ serverTimestamps: "estimate" }),
@@ -433,6 +448,13 @@ export default function Room({ user, code, name, title, onBack }) {
         })
       )
       .catch(() => {});
+  }
+
+  function toggleSound() {
+    const next = !soundEnabled;
+    setSoundOn(next);
+    setSoundEnabled(next);
+    if (next) playChime();
   }
 
   async function toggleAI() {
@@ -905,6 +927,18 @@ export default function Room({ user, code, name, title, onBack }) {
             </div>
             <div className="text-[12px] text-[#5FBF7A] mb-4">
               {onlineCount} online · {activeMembers.length} in group
+            </div>
+
+            <div className="mb-4">
+              <button onClick={toggleSound} className={BTN}>
+                {soundEnabled ? (
+                  <Bell size={14} className="text-[#C9A44C]" />
+                ) : (
+                  <BellOff size={14} className="text-[#C9A44C]" />
+                )}
+                Message sound is {soundEnabled ? "ON" : "OFF"} · tap to turn{" "}
+                {soundEnabled ? "off" : "on"}
+              </button>
             </div>
 
             {isStaff && (
