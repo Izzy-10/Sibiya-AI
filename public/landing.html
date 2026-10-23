@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Sibiya AI — Umoya Wesizwe SakwaZulu</title>
+<meta name="description" content="Sibiya AI is an AI assistant made in South Africa. It speaks isiZulu and English, with group chats, voice notes and group calls." />
+<meta name="theme-color" content="#1A120A" />
+<meta property="og:title" content="Sibiya AI" />
+<meta property="og:description" content="An AI assistant made in South Africa, rooted in Zulu culture." />
+<meta property="og:type" content="website" />
+<style>
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; background: #1A120A; }
+  body {
+    margin: 0;
+    color: #F3E6CC;
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    line-height: 1.6;
+    background: transparent;
+  }
+  a { color: #C9A44C; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 20px; }
+
+  .nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: max(18px, env(safe-area-inset-top)) 0 18px;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: #F3E6CC; }
+  .brand b { font-family: Georgia, serif; letter-spacing: 3px; font-size: 16px; }
+  .brand b span { color: #C9A44C; }
+  .nav a.small { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; text-decoration: none; }
+
+  .hero { text-align: center; padding: 56px 0 64px; }
+  .hero svg { margin-bottom: 18px; }
+  .tag { font-size: 11px; letter-spacing: 4px; text-transform: uppercase; color: #C4B193; }
+  h1 {
+    font-family: Georgia, serif;
+    font-size: clamp(32px, 7vw, 54px);
+    line-height: 1.1;
+    margin: 14px 0 16px;
+  }
+  h1 span { color: #C9A44C; }
+  .lead { font-size: 17px; color: #E2CEB1; max-width: 560px; margin: 0 auto 28px; }
+  .btns { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+  .btn {
+    display: inline-block; text-decoration: none; font-weight: 600; font-size: 14px;
+    padding: 13px 26px; border-radius: 12px;
+  }
+  .btn.gold { background: #C9A44C; color: #1A120A; }
+  .btn.line { border: 1px solid rgba(201,164,76,0.6); color: #C9A44C; }
+  .rule { height: 2px; width: 60px; background: #A13D2D; border: none; margin: 26px auto 0; }
+
+  section { padding: 44px 0; }
+  h2 {
+    font-size: 12px; letter-spacing: 3px; text-transform: uppercase; color: #C9A44C;
+    margin: 0 0 6px;
+  }
+  .h2b { font-family: Georgia, serif; font-size: clamp(22px, 4.5vw, 30px); margin: 0 0 22px; }
+
+  .grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  @media (min-width: 640px) { .grid { grid-template-columns: 1fr 1fr; } .grid.three { grid-template-columns: repeat(3, 1fr); } }
+  .card {
+    background: rgba(39,28,15,0.88);
+    border: 1px solid rgba(226,206,177,0.2);
+    border-left: 4px solid #A13D2D;
+    border-radius: 14px;
+    padding: 16px 18px;
+  }
+  .card h3 { margin: 0 0 4px; font-size: 16px; }
+  .card p { margin: 0; font-size: 14px; color: #E2CEB1; }
+  .num {
+    display: inline-flex; width: 28px; height: 28px; border-radius: 50%;
+    background: #C9A44C; color: #1A120A; font-weight: 700; font-size: 14px;
+    align-items: center; justify-content: center; margin-bottom: 8px;
+  }
+
+  .cta { text-align: center; padding: 56px 0; }
+  .cta .h2b { margin-bottom: 14px; }
+  .made { color: #C4B193; font-size: 14px; margin: 0 0 24px; }
+
+  footer {
+    border-top: 1px solid rgba(226,206,177,0.2);
+    padding: 28px 0 max(28px, env(safe-area-inset-bottom));
+    font-size: 13px; color: #A8957D;
+  }
+  footer .links { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-bottom: 14px; }
+  footer .links a { color: #F3E6CC; text-decoration: none; }
+  footer .links a:hover { color: #C9A44C; }
+</style>
+<link rel="stylesheet" href="/theme.css" />
+</head>
+<body>
+  <div class="wrap">
+
+    <nav class="nav">
+      <a class="brand" href="/landing.html">
+        <svg width="34" height="34" viewBox="0 0 176 176" aria-hidden="true">
+          <rect width="176" height="176" rx="38" fill="#141311" stroke="#C9A44C" stroke-width="3" opacity="0.7"/>
+          <g stroke="#8A8580" stroke-width="3"><line x1="42" y1="140" x2="118" y2="46"/><line x1="126" y1="140" x2="64" y2="40"/></g>
+          <path d="M88 50 C 110 50 120 74 120 92 C 120 120 105 140 88 147 C 71 140 56 120 56 92 C 56 74 66 50 88 50 Z" fill="#EDE6D6" stroke="#0B0B0C" stroke-width="1.5"/>
+          <line x1="88" y1="54" x2="88" y2="143" stroke="#0B0B0C" stroke-width="1.5"/>
+          <path d="M 120 108 L 134 108 L 134 118 L 126 118 L 126 124 L 134 124 L 134 140 L 120 140 L 120 134 L 128 134 L 128 130 L 120 130 Z" fill="#C9A44C"/>
+        </svg>
+        <b>SIBIYA <span>AI</span></b>
+      </a>
+      <a class="small" href="/about.html">About</a>
+    </nav>
+
+    <header class="hero">
+      <svg width="84" height="84" viewBox="0 0 176 176" aria-label="Sibiya AI logo">
+        <defs>
+          <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#E8C97A"/><stop offset="55%" stop-color="#C9A44C"/><stop offset="100%" stop-color="#9C7C33"/>
+          </linearGradient>
+        </defs>
+        <rect width="176" height="176" rx="38" fill="#141311" stroke="#C9A44C" stroke-width="1.5" opacity="0.7"/>
+        <g stroke="#8A8580" stroke-width="3"><line x1="42" y1="140" x2="118" y2="46"/><line x1="126" y1="140" x2="64" y2="40"/></g>
+        <path d="M118 46 L124 39 L130 46 Z" fill="#D8D2C4"/><path d="M64 40 L59 33 L69 33 Z" fill="#D8D2C4"/>
+        <path d="M118 46 L138 53 L118 58 Z" fill="#A13D2D"/>
+        <path d="M88 50 C 110 50 120 74 120 92 C 120 120 105 140 88 147 C 71 140 56 120 56 92 C 56 74 66 50 88 50 Z" fill="#EDE6D6" stroke="#0B0B0C" stroke-width="1.5"/>
+        <line x1="88" y1="54" x2="88" y2="143" stroke="#0B0B0C" stroke-width="1.5"/>
+        <g fill="#0B0B0C"><rect x="80" y="62" width="16" height="5"/><rect x="80" y="72" width="16" height="5"/><rect x="80" y="82" width="16" height="5"/><rect x="80" y="92" width="16" height="5"/><rect x="80" y="102" width="16" height="5"/><rect x="80" y="112" width="16" height="5"/><rect x="80" y="122" width="16" height="5"/></g>
+        <g transform="translate(112,100) scale(0.22)"><path d="M 176 152 L 304 152 L 304 196 L 208 196 L 208 220 L 304 220 L 304 328 L 176 328 L 176 284 L 272 284 L 272 260 L 176 260 Z" fill="url(#g)"/></g>
+      </svg>
+      <div class="tag">Umoya Wesizwe SakwaZulu</div>
+      <h1>An AI that speaks <span>isiZulu</span> and English.</h1>
+      <p class="lead">Made in South Africa, rooted in Zulu culture. Chat on your own, or bring friends into a group and call on Sibiya AI when you need it.</p>
+      <div class="btns">
+        <a class="btn gold" href="/">Open Sibiya AI</a>
+        <a class="btn line" href="#features">See what it does</a>
+      </div>
+      <hr class="rule" />
+    </header>
+
+    <section id="features">
+      <h2>What you get</h2>
+      <p class="h2b">Everything in one calm space.</p>
+      <div class="grid">
+        <div class="card"><h3>isiZulu and English</h3><p>Write in isiZulu and it answers in isiZulu. Write in English and it answers in English, with the odd sawubona.</p></div>
+        <div class="card"><h3>Solo chat</h3><p>Sign in with Google and talk to Sibiya AI one-on-one. Attach a PDF and ask questions about it.</p></div>
+        <div class="card"><h3>Group chats</h3><p>Create a group, share the invite link, and see who is online. Type @sibiya to bring the AI into the conversation.</p></div>
+        <div class="card"><h3>Voice notes and files</h3><p>Record a voice note, share a file, and react to messages with an emoji.</p></div>
+        <div class="card"><h3>Group calls</h3><p>Start a voice call inside any group, and join in one tap.</p></div>
+        <div class="card"><h3>Host controls</h3><p>Lock the group, pin a note, mute or remove people, and pick co-hosts to help.</p></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>How it works</h2>
+      <p class="h2b">Three steps.</p>
+      <div class="grid three">
+        <div class="card"><span class="num">1</span><h3>Sign in</h3><p>Use Google, or join a group as a guest.</p></div>
+        <div class="card"><span class="num">2</span><h3>Chat or start a group</h3><p>Talk to the AI alone, or share a code with friends.</p></div>
+        <div class="card"><span class="num">3</span><h3>Call on @sibiya</h3><p>Ask a question in the group and the AI answers for everyone.</p></div>
+      </div>
+    </section>
+
+    <section class="cta">
+      <h2>Ready?</h2>
+      <p class="h2b">Sawubona. Come and chat.</p>
+      <p class="made">Built by Sizwe Sicelimpilo Sibiya, Durban, South Africa.</p>
+      <a class="btn gold" href="/">Open Sibiya AI →</a>
+    </section>
+
+    <footer>
+      <div class="links">
+        <a href="/about.html">About</a>
+        <a href="/support.html">Support</a>
+        <a href="/privacy.html">Privacy</a>
+        <a href="https://www.tiktok.com/@sizwesibiya7" target="_blank" rel="noopener">TikTok</a>
+      </div>
+      <div>© 2026 Sibiya AI. All rights reserved.</div>
+    </footer>
+
+  </div>
+</body>
+</html>
