@@ -96,6 +96,8 @@ export default function Room({ user, code, name, title, onBack }) {
   const [inCall, setInCall] = useState(false);
   const [showPanel, setShowPanel] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(getSoundOn);
+  const [replyTo, setReplyTo] = useState(null);
+  const inputRef = useRef(null);
   const [, setTick] = useState(0);
   const scrollRef = useRef(null);
   const messagesRef = useRef([]);
@@ -277,7 +279,12 @@ export default function Room({ user, code, name, title, onBack }) {
   async function askAI(asker) {
     setAiBusy(true);
     try {
-      const recent = messagesRef.current.slice(-20).map(m => ({ name: m.name, text: m.text }));
+      const recent = messagesRef.current.slice(-20).map(m => ({
+        name: m.name,
+        text: m.replyTo
+          ? `(replying to ${m.replyTo.name}: "${m.replyTo.text}") ${m.text}`
+          : m.text,
+      }));
       const token = await getToken();
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -314,25 +321,58 @@ export default function Room({ user, code, name, title, onBack }) {
       setError("The host has muted you in this group.");
       return;
     }
+    const reply = replyTo;
     setInput("");
     setError("");
     try {
-      await addDoc(collection(db, "chats", code, "messages"), {
+      const msg = {
         text: text.slice(0, 1000),
         uid: user.uid,
         name,
         ai: false,
         createdAt: serverTimestamp(),
-      });
+      };
+      if (reply) {
+        msg.replyTo = {
+          id: reply.id,
+          uid: reply.uid || "",
+          name: reply.name,
+          text: reply.text,
+        };
+      }
+      await addDoc(collection(db, "chats", code, "messages"), msg);
+      setReplyTo(null);
     } catch {
       setError("Message didn't send. Check your connection.");
       setInput(text);
       return;
     }
-    if (MENTION.test(text) && !aiBusy) {
+    // @sibiya, or a reply to one of the AI's own messages, calls the AI
+    if ((MENTION.test(text) || reply?.uid === "sibiya-ai") && !aiBusy) {
       if (aiOn) askAI(name);
       else setError("The host turned Sibiya AI off in this group.");
     }
+  }
+
+  function startReply(m) {
+    setReplyTo({
+      id: m.id,
+      uid: m.uid || "",
+      name: m.name || "Someone",
+      text: String(m.text || "").slice(0, 120),
+    });
+    setTimeout(() => inputRef.current?.focus(), 0);
+  }
+
+  function jumpTo(id) {
+    const el = document.getElementById("msg-" + id);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.style.transition = "background-color 0.4s";
+    el.style.backgroundColor = "rgba(201,164,76,0.18)";
+    setTimeout(() => {
+      el.style.backgroundColor = "";
+    }, 1200);
   }
 
   async function sendMedia(info) {
@@ -701,7 +741,8 @@ export default function Room({ user, code, name, title, onBack }) {
           return (
             <div
               key={m.id}
-              className={`flex ${mine ? "justify-end" : "justify-start"} items-end gap-1.5`}
+              id={"msg-" + m.id}
+              className={`flex ${mine ? "justify-end" : "justify-start"} items-end gap-1.5 rounded-xl`}
             >
               {mine && reactBtn}
               <div className={`max-w-[78%] flex flex-col ${mine ? "items-end" : "items-start"}`}>
@@ -725,6 +766,19 @@ export default function Room({ user, code, name, title, onBack }) {
                       : "bg-[#161514] border border-[#232019] rounded-bl-sm"
                   }`}
                 >
+                  {m.replyTo && (
+                    <button
+                      onClick={() => jumpTo(m.replyTo.id)}
+                      className={`block w-full text-left mb-2 pl-2 border-l-2 text-[12px] ${
+                        mine
+                          ? "border-[#0B0B0C]/50 text-[#0B0B0C]/80"
+                          : "border-[#C9A44C] text-[#D8D2C4]/80"
+                      }`}
+                    >
+                      <div className="font-semibold truncate">{m.replyTo.name}</div>
+                      <div className="truncate opacity-80">{m.replyTo.text}</div>
+                    </button>
+                  )}
                   {m.type === "voice" && m.mediaId ? (
                     <VoiceBubble code={code} m={m} mine={mine} />
                   ) : m.type === "file" && m.mediaId ? (
@@ -792,6 +846,14 @@ export default function Room({ user, code, name, title, onBack }) {
 
                 <div className={`text-[10px] text-[#5C5850] mt-1 ${mine ? "text-right" : ""}`}>
                   {timeOf(m)}
+                  {m.type !== "call" && !iAmMuted && (
+                    <button
+                      onClick={() => startReply(m)}
+                      className="ml-2 text-[#5C5850] hover:text-[#C9A44C] underline"
+                    >
+                      Reply
+                    </button>
+                  )}
                   {isStaff && !m.type && m.text && (
                     <button
                       onClick={() => pinText(m.text)}
@@ -836,6 +898,22 @@ export default function Room({ user, code, name, title, onBack }) {
           </div>
         )}
 
+        {replyTo && (
+          <div className="flex items-center gap-2 mb-2 rounded-xl border border-[#232019] bg-[#161514] px-3 py-2">
+            <div className="flex-1 min-w-0 border-l-2 border-[#C9A44C] pl-2">
+              <div className="text-[11px] text-[#C9A44C] truncate">Replying to {replyTo.name}</div>
+              <div className="text-[12px] text-[#8A8580] truncate">{replyTo.text}</div>
+            </div>
+            <button
+              onClick={() => setReplyTo(null)}
+              aria-label="Cancel reply"
+              className="w-7 h-7 shrink-0 rounded-full text-[#8A8580] hover:text-[#E07A66] flex items-center justify-center"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
+
         {recorder.recording ? (
           <div className="flex items-center gap-3 bg-[#161514] border border-[#A13D2D]/60 rounded-2xl px-4 py-2.5">
             <span className="w-2.5 h-2.5 rounded-full bg-[#E07A66] animate-pulse" />
@@ -870,6 +948,7 @@ export default function Room({ user, code, name, title, onBack }) {
               <Paperclip size={16} />
             </button>
             <textarea
+              ref={inputRef}
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKey}
