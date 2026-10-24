@@ -745,7 +745,7 @@ export default function Room({ user, code, name, title, onBack }) {
               className={`flex ${mine ? "justify-end" : "justify-start"} items-end gap-1.5 rounded-xl`}
             >
               {mine && reactBtn}
-              <div className={`max-w-[78%] flex flex-col ${mine ? "items-end" : "items-start"}`}>
+              <div className={`max-w-[78%] min-w-0 flex flex-col ${mine ? "items-end" : "items-start"}`}>
                 {!mine && (
                   <div
                     className={`text-[10px] uppercase tracking-widest mb-1 ${
@@ -758,7 +758,7 @@ export default function Room({ user, code, name, title, onBack }) {
                   </div>
                 )}
                 <div
-                  className={`px-4 py-2.5 rounded-2xl text-[14px] leading-relaxed whitespace-pre-wrap break-words ${
+                  className={`min-w-0 max-w-full overflow-hidden px-4 py-2.5 rounded-2xl text-[14px] leading-relaxed whitespace-pre-wrap break-words ${
                     mine
                       ? "bg-[#C9A44C] text-[#0B0B0C] rounded-br-sm"
                       : ai
@@ -769,7 +769,7 @@ export default function Room({ user, code, name, title, onBack }) {
                   {m.replyTo && (
                     <button
                       onClick={() => jumpTo(m.replyTo.id)}
-                      className={`block w-full text-left mb-2 pl-2 border-l-2 text-[12px] ${
+                      className={`block w-full min-w-0 max-w-full overflow-hidden text-left mb-2 pl-2 border-l-2 text-[12px] ${
                         mine
                           ? "border-[#0B0B0C]/50 text-[#0B0B0C]/80"
                           : "border-[#C9A44C] text-[#D8D2C4]/80"
@@ -980,7 +980,7 @@ export default function Room({ user, code, name, title, onBack }) {
 
         {sending && <div className="text-center text-[11px] text-[#8A8580] mt-2">Sending...</div>}
         <div className="text-center text-[10px] text-[#5C5850] mt-2 tracking-wide">
-          {aiOn ? "Type @sibiya to ask the AI" : "Sibiya AI is off in this group"}
+          {aiOn ? "Type @sibiya, or reply to an AI message" : "Sibiya AI is off in this group"}
         </div>
       </div>
 
