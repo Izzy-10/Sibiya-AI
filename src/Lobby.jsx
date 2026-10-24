@@ -307,37 +307,6 @@ export default function Lobby({ user, authError, initialCode, onEnterRoom, onSol
           {error && <div className="text-[12px] text-[#E07A66]">{error}</div>}
         </div>
 
-        {user && groups.length > 0 && (
-          <div className={cardCls}>
-            <div className="flex items-center justify-between">
-              <div className={labelCls}>Your groups</div>
-              <button
-                onClick={toggleSound}
-                aria-label={soundEnabled ? "Turn message sound off" : "Turn message sound on"}
-                className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-[#8A8580] hover:text-[#C9A44C]"
-              >
-                {soundEnabled ? <Bell size={13} /> : <BellOff size={13} />}
-                Sound {soundEnabled ? "on" : "off"}
-              </button>
-            </div>
-            <div className="space-y-2">
-              {groups.slice(0, 15).map(g => (
-                <GroupRow
-                  key={g.code}
-                  g={g}
-                  user={user}
-                  onOpen={openGroup}
-                  onForget={forgetGroup}
-                  onTitle={updateTitle}
-                />
-              ))}
-            </div>
-            <div className="text-[11px] text-[#5C5850]">
-              A gold number means new messages since you last opened that group on this device.
-            </div>
-          </div>
-        )}
-
         <div className={cardCls}>
           <div className={labelCls}>Chat with Sibiya AI</div>
           <div className="text-[13px] text-[#D8D2C4]">Just you and the assistant, like before.</div>
@@ -373,6 +342,37 @@ export default function Lobby({ user, authError, initialCode, onEnterRoom, onSol
             {ready ? "Join group" : "Connecting..."}
           </button>
         </div>
+
+        {user && groups.length > 0 && (
+          <div className={cardCls}>
+            <div className="flex items-center justify-between">
+              <div className={labelCls}>Your groups</div>
+              <button
+                onClick={toggleSound}
+                aria-label={soundEnabled ? "Turn message sound off" : "Turn message sound on"}
+                className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-[#8A8580] hover:text-[#C9A44C]"
+              >
+                {soundEnabled ? <Bell size={13} /> : <BellOff size={13} />}
+                Sound {soundEnabled ? "on" : "off"}
+              </button>
+            </div>
+            <div className="space-y-2">
+              {groups.slice(0, 15).map(g => (
+                <GroupRow
+                  key={g.code}
+                  g={g}
+                  user={user}
+                  onOpen={openGroup}
+                  onForget={forgetGroup}
+                  onTitle={updateTitle}
+                />
+              ))}
+            </div>
+            <div className="text-[11px] text-[#5C5850]">
+              A gold number means new messages since you last opened that group on this device.
+            </div>
+          </div>
+        )}
 
         <div className="pt-8 border-t border-[#232019]">
           <div className="font-bold text-[18px] tracking-[0.15em]" style={{ fontFamily: "Georgia, serif" }}>
