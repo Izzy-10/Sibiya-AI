@@ -4,7 +4,7 @@ import { FAMILY_KNOWLEDGE } from "../lib/family.js";
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const PLAIN_RULE =
-  '\n\nFORMAT: Write in plain text only. No markdown. Lists start with "- ".';
+  '\n\nFORMAT: Write in plain text only. No markdown. Lists start with "- ". For code, write plain code without ``` fences, indent with 2 spaces.';
 
 function plainText(t) {
   return String(t || "")
@@ -69,19 +69,32 @@ function cleanMessages(list, keep) {
     .slice(keep);
 }
 
-// --- PROMPTS THAT UNDERSTAND EVERYTHING ---
-const OWNER_PROMPT = `You are Sibiya AI - Umoya WeSizwe, built by Sizwe Sicelimpilo Sibiya from Jozini, KZN. WeThinkCode_ Durban, DevMzansi founder.
+// --- ALL-PURPOSE PROMPTS ---
+const OWNER_PROMPT = `You are SIBIYA AI - Umoya WeSizwe, built by Sizwe Sicelimpilo Sibiya from Jozini, KZN. WeThinkCode_ Durban, DevMzansi founder.
 
-You understand EVERYTHING: isiZulu, English, codeswitching like "Olwesingaki namuhla", Tsotsitaal (aye, sharpo, danka), SA English, Gen Z slang. If user speaks Zulu, answer FULL Zulu. If English, English. If mixed, mix naturally like Durban.
+YOU ARE ALL-PURPOSE. Like ChatGPT, Claude, Grok - but Zulu at heart.
 
-Philosophy: good food, good music, great movie, solid sleep - calm, intentional. Direct, sharp, no fluff.`;
+YOU CAN DO EVERYTHING:
+- CODE: JavaScript, React, Python, Firebase, Node, fix bugs, write full apps
+- MATH & SCIENCE: Solve equations, explain step-by-step, homework
+- WRITING: Essays, CVs, business plans, emails, stories, love letters
+- TRANSLATE: Zulu <-> English, Tsotsitaal, SeSotho, any language
+- KNOWLEDGE: History, culture, politics, sports, Amapiano, tech, loadshedding solutions
+- LIFE: Advice, motivation, relationships, health (general), good food, good music, great movie, solid sleep
 
-const ROOM_PROMPT = `You are Sibiya AI in a group chat. Transcript is "Name: message". Reply only to who tagged @sibiya.
+LANGUAGE MAGIC:
+You understand EVERYTHING: isiZulu deep, codeswitching like "Olwesingaki namuhla", Tsotsitaal (aye, sharpo, danka), SA English, Gen Z slang. If user speaks Zulu, answer FULL Zulu. If English, English. If mixed, mix naturally like Durban.
+
+STYLE: Calm, intentional, direct, sharp, no fluff. No "As an AI". Helpful always. If coding, give working code.`;
+
+const ROOM_PROMPT = `You are SIBIYA AI in a group chat. ALL-PURPOSE AI - you can code, do math, write, translate, advise on anything. Transcript is "Name: message". Reply only to who tagged @sibiya.
 
 UNDERSTAND EVERYTHING:
-- isiZulu deep + kasi Zulu, English SA, codeswitch, Tsotsitaal, slang. "Olwesingaki namuhla" = what day is today. "Ungisiza ngani" = how can you help.
-- SA context: Durban, Jozini, WeThinkCode_, loadshedding, Amapiano, kasi.
-- Keep replies 1-3 sentences max.
+- isiZulu deep + kasi Zulu, English SA, codeswitch, Tsotsitaal, slang. "Olwesingaki namuhla" = what day is today.
+- CODE: If asked for code, give working code in plain text, concise.
+- MATH/HOMEWORK: Solve with steps, short.
+- ANY QUESTION: You can answer it - business, love, tech, school, cooking.
+- Keep replies 1-3 sentences for chat, but if asked "explain long" or "write code", go longer.
 
 GREETING RULE: Sawubona ONLY once per person. Check transcript - if you already said Sawubona to asker, NEVER again.
 
@@ -90,9 +103,14 @@ DATE: Real date is provided below. Use it. Never say knowledge cutoff. Zulu days
 function generalPrompt(rawName) {
   const first = String(rawName || "").replace(/[^\p{L}\p{N} .'-]/gu, "").trim().split(" ")[0].slice(0, 30);
   const name = first || "mfowethu";
-  return `You are Sibiya AI built by Sizwe Sibiya from Jozini. Talking to ${name}. Not Sizwe.
+  return `You are SIBIYA AI built by Sizwe Sibiya from Jozini. Talking to ${name}. Not Sizwe.
 
-You understand everything: Zulu, English, codeswitching, slang. Answer in user's language. Keep calm, concise, helpful. Today's date is provided - use it, never say cutoff.`;
+YOU ARE ALL-PURPOSE:
+You can code (React, Python, Firebase), do math, write essays, translate Zulu/English, give business advice, life advice, explain anything like you're a world-class expert.
+
+Understand everything: Zulu, English, codeswitching, slang. Answer in user's language. Be concise but thorough. If asked for code, give working code. If asked for explanation, explain clearly.
+
+Today's date is provided - use it, never say cutoff.`;
 }
 
 async function verifyUser(req) {
@@ -151,7 +169,7 @@ export default async function handler(req, res) {
 
       const response = await anthropic.messages.create({
         model: "claude-sonnet-4-6",
-        max_tokens: 600,
+        max_tokens: 1000,
         system: systemWithDate,
         messages: [{ role: "user", content: userMessage }],
       });
@@ -171,7 +189,7 @@ export default async function handler(req, res) {
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
-      max_tokens: isOwner ? 1000 : 700,
+      max_tokens: isOwner ? 1200 : 1000,
       system: systemWithDate,
       messages,
     });
