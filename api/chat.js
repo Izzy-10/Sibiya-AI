@@ -31,8 +31,13 @@ const anthropic = {
   },
 };
 
-const FIREBASE_API_KEY = "AIzaSyByw2cQQXcWjVl2ESpiPJ32-6VLETvBOx0";
+// --- SECURE: No hardcoded keys ---
+const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY;
 const OWNER_EMAIL = (process.env.OWNER_EMAIL || "").trim().toLowerCase();
+
+if (!FIREBASE_API_KEY) {
+  console.warn("WARNING: FIREBASE_API_KEY env var not set");
+}
 
 const hits = new Map();
 function tooMany(key, limit) {
@@ -69,7 +74,6 @@ function cleanMessages(list, keep) {
     .slice(keep);
 }
 
-// --- ALL-PURPOSE PROMPTS ---
 const OWNER_PROMPT = `You are SIBIYA AI - Umoya WeSizwe, built by Sizwe Sicelimpilo Sibiya from Jozini, KZN. WeThinkCode_ Durban, DevMzansi founder.
 
 YOU ARE ALL-PURPOSE. Like ChatGPT, Claude, Grok - but Zulu at heart.
@@ -117,6 +121,7 @@ async function verifyUser(req) {
   const header = req.headers.authorization || "";
   const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
   if (!token) return null;
+  if (!FIREBASE_API_KEY) return null;
   try {
     const r = await fetch(
       `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_API_KEY}`,
