@@ -1,32 +1,15 @@
 import * as LK from "livekit-server-sdk";
+import { verifyFirebaseToken } from "../lib/auth.js";
 
 const { AccessToken, RoomServiceClient } = LK;
 
-const FIREBASE_API_KEY = "AIzaSyByw2cQQXcWjVl2ESpiPJ32-6VLETvBOx0";
 const PROJECT_ID = "sibiya-ai";
 const FS = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 
 async function verifyUser(req) {
   const header = req.headers.authorization || "";
   const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
-  if (!token) return null;
-  try {
-    const r = await fetch(
-      `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Referer: "https://sibiya-ai.vercel.app/" },
-        body: JSON.stringify({ idToken: token }),
-      }
-    );
-    if (!r.ok) return null;
-    const data = await r.json();
-    const u = data.users && data.users[0];
-    if (!u) return null;
-    return { uid: u.localId, name: u.displayName || "", token };
-  } catch {
-    return null;
-  }
+  return verifyFirebaseToken(token);
 }
 
 // Reads a Firestore document as the signed-in user, so your Firestore rules still apply.

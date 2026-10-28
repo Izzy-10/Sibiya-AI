@@ -1,9 +1,11 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { FAMILY_KNOWLEDGE } from "../lib/family.js";
+import { verifyFirebaseToken } from "../lib/auth.js";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const PLAIN_RULE = '\n\nFORMAT: Write in plain text only. No markdown. Lists start with "- ". For code, write plain code without ``` fences, indent with 2 spaces.';
+const PLAIN_RULE =
+  '\n\nFORMAT: Write in plain text only. No markdown. Lists start with "- ". For code, write plain code without ``` fences, indent with 2 spaces.';
 
 function plainText(t) {
   return String(t || "")
@@ -30,7 +32,6 @@ const anthropic = {
   },
 };
 
-const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY;
 const OWNER_EMAIL = (process.env.OWNER_EMAIL || "").trim().toLowerCase();
 
 const hits = new Map();
@@ -68,6 +69,7 @@ function cleanMessages(list, keep) {
     .slice(keep);
 }
 
+// --- ALL-PURPOSE PROMPTS ---
 const IDENTITY_RULE = `IDENTITY: Do not bring up who built you, their name, hometown, school or projects, and do not introduce yourself with those details. Greet simply, as Sibiya AI. Only if someone directly asks who made Sibiya AI, say it was built by Sizwe Sicelimpilo Sibiya, a South African developer, and share nothing more private. Never assume who you are talking to.
 
 SIBIYA FAMILY HISTORY: Only use it when someone asks about the Sibiya family or clan. Never bring it up otherwise. Never translate the izithakazelo.`;
@@ -126,24 +128,7 @@ Today's date is provided - use it for any question about the date or time. You c
 async function verifyUser(req) {
   const header = req.headers.authorization || "";
   const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
-  if (!token) return null;
-  try {
-    const r = await fetch(
-      `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_API_KEY}`,
-      { method: "POST", headers: { "Content-Type": "application/json", Referer: "https://sibiya-ai.vercel.app/" }, body: JSON.stringify({ idToken: token }) }
-    );
-    if (!r.ok) return null;
-    const data = await r.json();
-    const u = data.users && data.users[0];
-    if (!u) return null;
-    return {
-      uid: u.localId,
-      email: (u.email || "").toLowerCase(),
-      verified: u.emailVerified === true,
-      name: u.displayName || "",
-      google: (u.providerUserInfo || []).some(p => p.providerId === "google.com"),
-    };
-  } catch { return null; }
+  return verifyFirebaseToken(token);
 }
 
 export default async function handler(req, res) {
