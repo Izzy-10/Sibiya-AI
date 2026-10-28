@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { FAMILY_KNOWLEDGE } from "../lib/family.js";
 import { verifyFirebaseToken } from "../lib/auth.js";
+import { adminToken, getDocument, recentMessages, addAiMessage } from "../lib/admin.js";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -144,11 +145,46 @@ export default async function handler(req, res) {
     const body = req.body || {};
 
     if (body.mode === "room") {
-      const lines = (Array.isArray(body.transcript) ? body.transcript : [])
-        .filter(m => m && typeof m === "object").slice(-20)
-        .map(m => `${String(m.name || "Someone").slice(0, 24)}: ${String(m.text || "").slice(0, 1000)}`).join("\n");
-      const asker = String(body.asker || "Someone").slice(0, 24);
-      const title = String(body.title || "").slice(0, 40);
+      const code = String(body.code || "").trim();
+      const admin = /^[A-Za-z0-9-]{6,40}$/.test(code) ? await adminToken() : null;
+
+      let lines;
+      let asker = String(body.asker || "Someone").slice(0, 24);
+      let title = String(body.title || "").slice(0, 40);
+
+      if (admin) {
+        // The server checks that this person may ask, and reads the group itself.
+        const [member, meta] = await Promise.all([
+          getDocument(`chats/${code}/members/${encodeURIComponent(user.uid)}`, admin),
+          getDocument(`chats/${code}/info/meta`, admin),
+        ]);
+        if (member && member.removed === true) {
+          return res.status(403).json({ error: "The host removed you from this group." });
+        }
+        if (meta && meta.locked === true && !member) {
+          return res.status(403).json({ error: "This group is locked by the host." });
+        }
+        if (meta && meta.aiEnabled === false) {
+          return res.status(403).json({ error: "The host turned Sibiya AI off in this group." });
+        }
+        if (member && member.name) asker = String(member.name).slice(0, 24);
+        if (meta && meta.title) title = String(meta.title).slice(0, 40);
+
+        const recent = (await recentMessages(code, 20, admin)).reverse();
+        lines = recent
+          .map(m => {
+            const ctx = m.replyTo && m.replyTo.text
+              ? `(replying to ${String(m.replyTo.name || "").slice(0, 24)}: "${String(m.replyTo.text).slice(0, 120)}") `
+              : "";
+            return `${String(m.name || "Someone").slice(0, 24)}: ${ctx}${String(m.text || "").slice(0, 1000)}`;
+          })
+          .join("\n");
+      } else {
+        // Older path (service account not set up yet): trust the transcript the app sent.
+        lines = (Array.isArray(body.transcript) ? body.transcript : [])
+          .filter(m => m && typeof m === "object").slice(-20)
+          .map(m => `${String(m.name || "Someone").slice(0, 24)}: ${String(m.text || "").slice(0, 1000)}`).join("\n");
+      }
 
       const lowerLines = lines.toLowerCase();
       const alreadyGreeted = lowerLines.includes("sawubona");
@@ -168,6 +204,13 @@ export default async function handler(req, res) {
         system: systemWithDate,
         messages: [{ role: "user", content: userMessage }],
       });
+
+      if (admin) {
+        const reply = (response.content || []).find(c => c.type === "text")?.text;
+        if (!reply) return res.status(502).json({ error: "Sibiya AI had no answer." });
+        await addAiMessage(code, reply, admin);
+        return res.status(200).json({ ...response, written: true });
+      }
       return res.status(200).json(response);
     }
 
