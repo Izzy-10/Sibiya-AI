@@ -291,13 +291,22 @@ export default function Room({ user, code, name, title, onBack }) {
         headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
         body: JSON.stringify({
           mode: "room",
+          code,
           title: meta?.title || title || "",
           asker,
           transcript: recent,
         }),
       });
-      if (!res.ok) throw new Error("api " + res.status);
+      if (!res.ok) {
+        const info = await res.json().catch(() => ({}));
+        if (res.status === 403 && info.error) {
+          setError(info.error);
+          return;
+        }
+        throw new Error("api " + res.status);
+      }
       const data = await res.json();
+      if (data.written) return; // the server already posted the reply into the group
       const reply = data.content?.find(c => c.type === "text")?.text;
       if (!reply) throw new Error("empty");
       await addDoc(collection(db, "chats", code, "messages"), {

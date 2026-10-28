@@ -86,6 +86,7 @@ const labelCls = "text-[10px] uppercase tracking-widest text-[#C9A44C]";
 function GroupRow({ g, user, onOpen, onForget, onTitle }) {
   const [unread, setUnread] = useState(0);
   const [title, setTitle] = useState(g.title || "");
+  const [preview, setPreview] = useState("");
 
   useEffect(() => {
     const unsubMeta = onSnapshot(
@@ -126,9 +127,21 @@ function GroupRow({ g, user, onOpen, onForget, onTitle }) {
       () => setUnread(0)
     );
 
+    const unsubLast = onSnapshot(
+      query(collection(db, "chats", g.code, "messages"), orderBy("createdAt", "desc"), limit(1)),
+      snap => {
+        const m = snap.docs[0]?.data();
+        if (!m) return setPreview("");
+        const who = m.ai ? "Sibiya AI" : m.uid === user.uid ? "You" : m.name || "Someone";
+        setPreview((who + ": " + String(m.text || "")).replace(/\s+/g, " ").slice(0, 90));
+      },
+      () => setPreview("")
+    );
+
     return () => {
       unsubMeta();
       unsubMsgs();
+      unsubLast();
     };
   }, [g.code, user.uid]);
 
@@ -142,7 +155,11 @@ function GroupRow({ g, user, onOpen, onForget, onTitle }) {
           <div className={`text-[14px] truncate ${unread > 0 ? "font-bold" : ""}`}>
             {title || "Group chat"}
           </div>
-          <div className="text-[10px] text-[#5C5850] tracking-wide truncate">{g.code}</div>
+          {preview ? (
+            <div className={`text-[12px] truncate ${unread > 0 ? "text-[#D8D2C4]" : "text-[#8A8580]"}`}>{preview}</div>
+          ) : (
+            <div className="text-[10px] text-[#8A8580] tracking-wide truncate">{g.code}</div>
+          )}
         </div>
         {unread > 0 && (
           <span className="min-w-[22px] h-[22px] px-1.5 rounded-full bg-[#C9A44C] text-[#0B0B0C] text-[11px] font-bold flex items-center justify-center">
