@@ -178,6 +178,25 @@ function GroupRow({ g, user, onOpen, onForget, onTitle }) {
   );
 }
 
+// True on computers and wide windows, so the lobby can use the whole screen
+function useWide() {
+  const query = "(min-width: 1024px)";
+  const [wide, setWide] = useState(
+    () => typeof window !== "undefined" && window.matchMedia(query).matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia(query);
+    const on = e => setWide(e.matches);
+    if (mq.addEventListener) mq.addEventListener("change", on);
+    else mq.addListener(on);
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener("change", on);
+      else mq.removeListener(on);
+    };
+  }, []);
+  return wide;
+}
+
 export default function Lobby({ user, authError, initialCode, onEnterRoom, onSolo, onSignOut }) {
   const [name, setName] = useState(loadName);
   const [title, setTitle] = useState("");
@@ -187,6 +206,7 @@ export default function Lobby({ user, authError, initialCode, onEnterRoom, onSol
   const [groups, setGroups] = useState(loadGroups);
   const [soundEnabled, setSoundEnabled] = useState(getSoundOn);
   const ready = !!user;
+  const wide = useWide();
 
   function requireName() {
     const n = name.trim();
@@ -271,6 +291,140 @@ export default function Lobby({ user, authError, initialCode, onEnterRoom, onSol
     }
   }
 
+  const first = (name.trim() || (user && !user.isAnonymous ? niceName(user) : "")).split(" ")[0];
+
+  const signedIn =
+    user && !user.isAnonymous ? (
+      <div className="flex items-center justify-between rounded-xl border border-[#232019] bg-[#161514] px-3 py-2 text-[12px] lg:min-w-[300px]">
+        <span className="truncate text-[#D8D2C4]">Signed in as {niceName(user)}</span>
+        <button
+          onClick={onSignOut}
+          className="text-[#C9A44C] uppercase tracking-widest text-[10px] ml-3 shrink-0"
+        >
+          Sign out
+        </button>
+      </div>
+    ) : null;
+
+  const nameCard = (
+    <div className={cardCls}>
+      <div className={labelCls}>Your name</div>
+      <input
+        className={inputCls}
+        placeholder="e.g. Sizwe"
+        value={name}
+        maxLength={24}
+        onChange={e => setName(e.target.value)}
+      />
+      {error && <div className="text-[12px] text-[#E07A66]">{error}</div>}
+    </div>
+  );
+
+  const soloCard = (
+    <div className={cardCls}>
+      <div className={labelCls}>Chat with Sibiya AI</div>
+      <div className="text-[13px] text-[#D8D2C4]">Just you and the assistant, like before.</div>
+      <button className={outlineBtn} onClick={onSolo}>
+        Start solo chat
+      </button>
+    </div>
+  );
+
+  const startCard = (
+    <div className={cardCls}>
+      <div className={labelCls}>Start a group</div>
+      <input
+        className={inputCls}
+        placeholder="Group name (optional)"
+        value={title}
+        maxLength={40}
+        onChange={e => setTitle(e.target.value)}
+      />
+      <button className={goldBtn} onClick={create} disabled={!ready}>
+        {ready ? "Create group" : "Connecting..."}
+      </button>
+    </div>
+  );
+
+  const joinCard = (
+    <div className={cardCls}>
+      <div className={labelCls}>Join with a code</div>
+      <input
+        className={inputCls}
+        placeholder="e.g. k7x2m-9qpwa"
+        value={code}
+        onChange={e => setCode(e.target.value)}
+        onKeyDown={e => e.key === "Enter" && ready && join()}
+      />
+      <button className={goldBtn} onClick={join} disabled={!ready}>
+        {ready ? "Join group" : "Connecting..."}
+      </button>
+    </div>
+  );
+
+  const groupsCard =
+    user && groups.length > 0 ? (
+      <div className={cardCls}>
+        <div className="flex items-center justify-between">
+          <div className={labelCls}>Your groups</div>
+          <button
+            onClick={toggleSound}
+            aria-label={soundEnabled ? "Turn message sound off" : "Turn message sound on"}
+            className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-[#8A8580] hover:text-[#C9A44C]"
+          >
+            {soundEnabled ? <Bell size={13} /> : <BellOff size={13} />}
+            Sound {soundEnabled ? "on" : "off"}
+          </button>
+        </div>
+        <div className="space-y-2">
+          {groups.slice(0, 15).map(g => (
+            <GroupRow
+              key={g.code}
+              g={g}
+              user={user}
+              onOpen={openGroup}
+              onForget={forgetGroup}
+              onTitle={updateTitle}
+            />
+          ))}
+        </div>
+        <div className="text-[11px] text-[#8A8580]">
+          A gold number means new messages since you last opened that group on this device.
+        </div>
+      </div>
+    ) : null;
+
+  const features = [
+    "isiZulu and English, in the same chat",
+    "Group chats: invite friends and call on @sibiya",
+    "Voice notes, files and group calls",
+    "Hosts who can lock, mute and pin",
+  ];
+
+  const hero = (
+    <div className="pt-2" style={{ textShadow: "0 1px 4px rgba(20,13,7,0.9)" }}>
+      <div className="text-[11px] uppercase tracking-[0.3em] text-[#C9A44C]">Umoya Wesizwe SakwaZulu</div>
+      <h1
+        className="mt-3 text-[46px] leading-[1.05] font-bold"
+        style={{ fontFamily: "Georgia, serif" }}
+      >
+        Sawubona{first ? ", " + first : ""}.
+      </h1>
+      <p className="mt-4 text-[16px] leading-relaxed text-[#E2CEB1] max-w-sm">
+        An AI that helps with anything. Chat on your own, or bring friends into a group and call
+        on Sibiya AI when you need it.
+      </p>
+      <ul className="mt-6 space-y-3 text-[14px] text-[#D8D2C4]">
+        {features.map(f => (
+          <li key={f} className="flex items-start gap-3">
+            <span className="mt-[7px] w-1.5 h-1.5 rounded-full bg-[#C9A44C] shrink-0" />
+            {f}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+
   return (
     <div
       className="min-h-[100dvh] bg-[#0B0B0C] text-[#F5F1E8]"
@@ -279,26 +433,17 @@ export default function Lobby({ user, authError, initialCode, onEnterRoom, onSol
         paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))",
       }}
     >
-      <div className="max-w-md mx-auto px-5 py-8 space-y-4">
-        <div className="flex items-center gap-3 mb-2">
-          <Logo size={44} />
-          <div>
-            <div className="font-bold text-[16px] tracking-tight">SIBIYA AI</div>
-            <div className="text-[10px] text-[#8A8580] tracking-wide">Umoya Wesizwe SakwaZulu</div>
+      <div className="max-w-md lg:max-w-5xl mx-auto px-5 lg:px-10 py-8 lg:py-12 space-y-4 lg:space-y-8">
+        <div className="space-y-4 lg:space-y-0 lg:flex lg:items-center lg:justify-between">
+          <div className="flex items-center gap-3 mb-2 lg:mb-0">
+            <Logo size={44} />
+            <div>
+              <div className="font-bold text-[16px] tracking-tight">SIBIYA AI</div>
+              <div className="text-[10px] text-[#8A8580] tracking-wide">Umoya Wesizwe SakwaZulu</div>
+            </div>
           </div>
+          {signedIn}
         </div>
-
-        {user && !user.isAnonymous && (
-          <div className="flex items-center justify-between rounded-xl border border-[#232019] bg-[#161514] px-3 py-2 text-[12px]">
-            <span className="truncate text-[#D8D2C4]">Signed in as {niceName(user)}</span>
-            <button
-              onClick={onSignOut}
-              className="text-[#C9A44C] uppercase tracking-widest text-[10px] ml-3 shrink-0"
-            >
-              Sign out
-            </button>
-          </div>
-        )}
 
         {authError && (
           <div className="rounded-xl border border-[#A13D2D]/60 bg-[#A13D2D]/10 px-3 py-2 text-[12px] text-[#F5F1E8]">
@@ -312,135 +457,85 @@ export default function Lobby({ user, authError, initialCode, onEnterRoom, onSol
           </div>
         )}
 
-        <div className={cardCls}>
-          <div className={labelCls}>Your name</div>
-          <input
-            className={inputCls}
-            placeholder="e.g. Sizwe"
-            value={name}
-            maxLength={24}
-            onChange={e => setName(e.target.value)}
-          />
-          {error && <div className="text-[12px] text-[#E07A66]">{error}</div>}
-        </div>
-
-        <div className={cardCls}>
-          <div className={labelCls}>Chat with Sibiya AI</div>
-          <div className="text-[13px] text-[#D8D2C4]">Just you and the assistant, like before.</div>
-          <button className={outlineBtn} onClick={onSolo}>
-            Start solo chat
-          </button>
-        </div>
-
-        <div className={cardCls}>
-          <div className={labelCls}>Start a group</div>
-          <input
-            className={inputCls}
-            placeholder="Group name (optional)"
-            value={title}
-            maxLength={40}
-            onChange={e => setTitle(e.target.value)}
-          />
-          <button className={goldBtn} onClick={create} disabled={!ready}>
-            {ready ? "Create group" : "Connecting..."}
-          </button>
-        </div>
-
-        <div className={cardCls}>
-          <div className={labelCls}>Join with a code</div>
-          <input
-            className={inputCls}
-            placeholder="e.g. k7x2m-9qpwa"
-            value={code}
-            onChange={e => setCode(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && ready && join()}
-          />
-          <button className={goldBtn} onClick={join} disabled={!ready}>
-            {ready ? "Join group" : "Connecting..."}
-          </button>
-        </div>
-
-        {user && groups.length > 0 && (
-          <div className={cardCls}>
-            <div className="flex items-center justify-between">
-              <div className={labelCls}>Your groups</div>
-              <button
-                onClick={toggleSound}
-                aria-label={soundEnabled ? "Turn message sound off" : "Turn message sound on"}
-                className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-[#8A8580] hover:text-[#C9A44C]"
-              >
-                {soundEnabled ? <Bell size={13} /> : <BellOff size={13} />}
-                Sound {soundEnabled ? "on" : "off"}
-              </button>
+        {wide ? (
+          <div className="grid grid-cols-12 gap-10 items-start">
+            <div className="col-span-5 space-y-6">
+              {hero}
+              {groupsCard}
             </div>
-            <div className="space-y-2">
-              {groups.slice(0, 15).map(g => (
-                <GroupRow
-                  key={g.code}
-                  g={g}
-                  user={user}
-                  onOpen={openGroup}
-                  onForget={forgetGroup}
-                  onTitle={updateTitle}
-                />
-              ))}
-            </div>
-            <div className="text-[11px] text-[#5C5850]">
-              A gold number means new messages since you last opened that group on this device.
+            <div className="col-span-7 space-y-4">
+              {nameCard}
+              {soloCard}
+              <div className="grid grid-cols-2 gap-4">
+                {startCard}
+                {joinCard}
+              </div>
             </div>
           </div>
+        ) : (
+          <>
+            {nameCard}
+            {soloCard}
+            {startCard}
+            {joinCard}
+            {groupsCard}
+          </>
         )}
 
         <div className="pt-8 border-t border-[#232019]">
-          <div className="font-bold text-[18px] tracking-[0.15em]" style={{ fontFamily: "Georgia, serif" }}>
-            SIBIYA <span className="text-[#C9A44C]">AI</span>
-          </div>
-          <p className="text-[13px] text-[#8A8580] mt-2">
-            Made in South Africa, rooted in Zulu culture. Chat on your own or bring friends into a group.
-          </p>
-          <p className="flex items-center gap-2 text-[12px] text-[#D8D2C4] mt-3">
-            <span className="w-2 h-2 rounded-full bg-[#A13D2D]" />
-            Available for projects &amp; collaborations
-          </p>
+          <div className="lg:flex lg:items-start lg:justify-between lg:gap-12">
+            <div className="lg:max-w-md">
+              <div className="font-bold text-[18px] tracking-[0.15em]" style={{ fontFamily: "Georgia, serif" }}>
+                SIBIYA <span className="text-[#C9A44C]">AI</span>
+              </div>
+              <p className="text-[13px] text-[#B5A284] mt-2">
+                Made in South Africa, rooted in Zulu culture. Chat on your own or bring friends into a group.
+              </p>
+              <p className="flex items-center gap-2 text-[12px] text-[#D8D2C4] mt-3">
+                <span className="w-2 h-2 rounded-full bg-[#A13D2D]" />
+                Available for projects &amp; collaborations
+              </p>
 
-          <div className="flex flex-wrap gap-3 mt-4">
-            <a
-              href="/about.html"
-              className="inline-block bg-[#C9A44C] text-[#0B0B0C] rounded-xl px-5 py-2.5 text-[13px] font-semibold"
-            >
-              About Sibiya AI →
-            </a>
-            <button
-              onClick={shareApp}
-              className="inline-flex items-center gap-2 border border-[#C9A44C]/60 text-[#C9A44C] rounded-xl px-5 py-2.5 text-[13px] font-semibold"
-            >
-              {shared ? <Check size={15} /> : <Share2 size={15} />}
-              {shared ? "Link copied" : "Share Sibiya AI"}
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-6 mt-8">
-            <div className="space-y-2.5">
-              <div className="text-[10px] uppercase tracking-widest text-[#C9A44C]">Pages</div>
-              <a href="/landing.html" className="block text-[13px] hover:text-[#C9A44C]">Home</a>
-              <a href="/about.html" className="block text-[13px] hover:text-[#C9A44C]">About</a>
-              <a href="/support.html" className="block text-[13px] hover:text-[#C9A44C]">Support</a>
-              <a href="/privacy.html" className="block text-[13px] hover:text-[#C9A44C]">Privacy</a>
+              <div className="flex flex-wrap gap-3 mt-4">
+                <a
+                  href="/about.html"
+                  className="inline-block bg-[#C9A44C] text-[#0B0B0C] rounded-xl px-5 py-2.5 text-[13px] font-semibold"
+                >
+                  About Sibiya AI →
+                </a>
+                <button
+                  onClick={shareApp}
+                  className="inline-flex items-center gap-2 border border-[#C9A44C]/60 text-[#C9A44C] rounded-xl px-5 py-2.5 text-[13px] font-semibold"
+                >
+                  {shared ? <Check size={15} /> : <Share2 size={15} />}
+                  {shared ? "Link copied" : "Share Sibiya AI"}
+                </button>
+              </div>
             </div>
-            <div className="space-y-2.5">
-              <div className="text-[10px] uppercase tracking-widest text-[#C9A44C]">Connect</div>
-              <a
-                href="https://www.tiktok.com/@sizwesibiya7"
-                target="_blank"
-                rel="noopener"
-                className="block text-[13px] hover:text-[#C9A44C]"
-              >
-                Follow me on TikTok
-              </a>
+
+            <div className="grid grid-cols-2 gap-6 mt-8 lg:mt-0 lg:gap-16">
+              <div className="space-y-2.5">
+                <div className="text-[10px] uppercase tracking-widest text-[#C9A44C]">Pages</div>
+                <a href="/landing.html" className="block text-[13px] hover:text-[#C9A44C]">Home</a>
+                <a href="/about.html" className="block text-[13px] hover:text-[#C9A44C]">About</a>
+                <a href="/support.html" className="block text-[13px] hover:text-[#C9A44C]">Support</a>
+                <a href="/privacy.html" className="block text-[13px] hover:text-[#C9A44C]">Privacy</a>
+              </div>
+              <div className="space-y-2.5">
+                <div className="text-[10px] uppercase tracking-widest text-[#C9A44C]">Connect</div>
+                <a
+                  href="https://www.tiktok.com/@sizwesibiya7"
+                  target="_blank"
+                  rel="noopener"
+                  className="block text-[13px] hover:text-[#C9A44C]"
+                >
+                  Follow me on TikTok
+                </a>
+              </div>
             </div>
           </div>
 
-          <div className="mt-8 pt-4 border-t border-[#1E1D1A] text-[11px] text-[#5C5850] space-y-1">
+          <div className="mt-8 pt-4 border-t border-[#1E1D1A] text-[11px] text-[#8A8580] space-y-1">
             <div>© 2026 Sibiya AI. All rights reserved.</div>
             <div>Built by Sizwe Sicelimpilo Sibiya · Durban, South Africa</div>
           </div>
