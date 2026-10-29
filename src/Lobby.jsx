@@ -291,8 +291,6 @@ export default function Lobby({ user, authError, initialCode, onEnterRoom, onSol
     }
   }
 
-  const first = (name.trim() || (user && !user.isAnonymous ? niceName(user) : "")).split(" ")[0];
-
   const signedIn =
     user && !user.isAnonymous ? (
       <div className="flex items-center justify-between rounded-xl border border-[#232019] bg-[#161514] px-3 py-2 text-[12px] lg:min-w-[300px]">
@@ -408,7 +406,7 @@ export default function Lobby({ user, authError, initialCode, onEnterRoom, onSol
         className="mt-3 text-[46px] leading-[1.05] font-bold"
         style={{ fontFamily: "Georgia, serif" }}
       >
-        Sawubona{first ? ", " + first : ""}.
+        Sawubona.
       </h1>
       <p className="mt-4 text-[16px] leading-relaxed text-[#E2CEB1] max-w-sm">
         An AI that helps with anything. Chat on your own, or bring friends into a group and call
