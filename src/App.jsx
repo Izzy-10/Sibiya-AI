@@ -1,6 +1,53 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, Volume2, Paperclip, X } from "lucide-react";
 import { getToken } from "./firebase.js";
+import Linkify from "./Linkify.jsx";
+
+const GREETING = { role: "assistant", content: "Sawubona. I'm Sibiya AI. What are we working on today?" };
+const ERROR_TEXT = "Something broke on my end — try again.";
+const KEEP = 40; // how many messages are kept on this device
+
+// The signed-in person's id, read from their sign-in token (used to keep each account's chat separate)
+function uidFromToken(token) {
+  try {
+    const part = String(token).split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(part)).sub || null;
+  } catch {
+    return null;
+  }
+}
+
+function loadSaved(uid) {
+  try {
+    const list = JSON.parse(localStorage.getItem("sibiya_solo:" + uid) || "null");
+    if (!Array.isArray(list) || list.length < 2) return null;
+    return list
+      .filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+      .slice(-KEEP);
+  } catch {
+    return null;
+  }
+}
+
+// Saves text only (a PDF attachment is kept as its file name, not the file itself)
+function saveChat(uid, messages) {
+  try {
+    const list = messages
+      .map(m => ({
+        role: m.role,
+        content: String(typeof m.content === "string" ? m.content : m._display || "").slice(0, 8000),
+      }))
+      .filter(m => m.content && m.content !== ERROR_TEXT)
+      .slice(-KEEP);
+    localStorage.setItem("sibiya_solo:" + uid, JSON.stringify(list));
+  } catch {}
+}
+
+function clearSaved(uid) {
+  try {
+    localStorage.removeItem("sibiya_solo:" + uid);
+  } catch {}
+}
 
 function pickMaleVoice() {
   const voices = window.speechSynthesis?.getVoices() || [];
@@ -24,13 +71,13 @@ function speak(text, enabled) {
 }
 
 export default function App() {
-  const [messages, setMessages] = useState([
-    { role: "assistant", content: "Sawubona. I'm Sibiya AI. What are we working on today?" }
-  ]);
+  const [messages, setMessages] = useState([GREETING]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [voiceOn, setVoiceOn] = useState(true);
   const [pendingFile, setPendingFile] = useState(null);
+  const [uid, setUid] = useState(null);
+  const [historyReady, setHistoryReady] = useState(false);
   const scrollRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -38,9 +85,42 @@ export default function App() {
     if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = () => {};
   }, []);
 
+  // Bring back this account's last chat after a refresh
+  useEffect(() => {
+    let alive = true;
+    getToken()
+      .then(token => {
+        if (!alive) return;
+        const id = uidFromToken(token);
+        if (!id) return;
+        setUid(id);
+        const saved = loadSaved(id);
+        if (saved) setMessages(prev => (prev.length === 1 ? saved : prev));
+        setHistoryReady(true);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // Keep the chat saved on this device as it grows
+  useEffect(() => {
+    if (!uid || !historyReady) return;
+    saveChat(uid, messages);
+  }, [messages, uid, historyReady]);
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, loading]);
+
+  function newChat() {
+    if (!window.confirm("Start a new chat? This clears the saved conversation on this device.")) return;
+    window.speechSynthesis?.cancel();
+    setMessages([GREETING]);
+    setPendingFile(null);
+    if (uid) clearSaved(uid);
+  }
 
   function handleFileSelect(e) {
     const file = e.target.files?.[0];
@@ -92,7 +172,7 @@ export default function App() {
       setMessages(prev => [...prev, { role: "assistant", content: reply }]);
       speak(reply, voiceOn);
     } catch (e) {
-      setMessages(prev => [...prev, { role: "assistant", content: "Something broke on my end — try again." }]);
+      setMessages(prev => [...prev, { role: "assistant", content: ERROR_TEXT }]);
     } finally {
       setLoading(false);
     }
@@ -199,13 +279,13 @@ export default function App() {
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"} items-end gap-2`}>
             <div
-              className={`max-w-[80%] px-4 py-3 rounded-2xl text-[14px] leading-relaxed whitespace-pre-wrap ${
+              className={`max-w-[80%] px-4 py-3 rounded-2xl text-[14px] leading-relaxed whitespace-pre-wrap break-words ${
                 m.role === "user"
                   ? "bg-[#C9A44C] text-[#0B0B0C] rounded-br-sm"
                   : "bg-[#161514] text-[#F5F1E8] rounded-bl-sm border border-[#232019]"
               }`}
             >
-              {typeof m.content === "string" ? m.content : m._display}
+              <Linkify text={typeof m.content === "string" ? m.content : m._display} mine={m.role === "user"} />
             </div>
             {m.role === "assistant" && (
               <button
@@ -266,11 +346,12 @@ export default function App() {
             <Send size={14} />
           </button>
         </div>
-        <div className="text-center mt-3">
-          <a
-            href="/privacy.html"
-            className="text-[10px] text-[#5C5850] hover:text-[#C9A44C] tracking-wide transition-colors"
-          >
+        <div className="flex items-center justify-center gap-3 mt-3 text-[10px] tracking-wide">
+          <button onClick={newChat} className="text-[#8A8580] hover:text-[#C9A44C] transition-colors">
+            New chat
+          </button>
+          <span className="text-[#5C5850]">·</span>
+          <a href="/privacy.html" className="text-[#8A8580] hover:text-[#C9A44C] transition-colors">
             Privacy Policy
           </a>
         </div>

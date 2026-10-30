@@ -55,6 +55,7 @@ import {
 } from "./Media.jsx";
 import CallView from "./Call.jsx";
 import { getSoundOn, playChime, setSoundOn } from "./sound.js";
+import Linkify from "./Linkify.jsx";
 
 const MENTION = /@sibiya\b/i;
 const ONLINE_WINDOW_MS = 75000;
@@ -710,7 +711,7 @@ export default function Room({ user, code, name, title, onBack }) {
         <div className="flex items-start gap-2 px-4 py-2 border-b border-[#1E1D1A] bg-[#161514]">
           <Pin size={14} className="text-[#C9A44C] mt-0.5 shrink-0" />
           <div className="flex-1 min-w-0 text-[13px] text-[#D8D2C4] whitespace-pre-wrap break-words max-h-24 overflow-y-auto">
-            {pinned.text}
+            <Linkify text={pinned.text} />
             {pinned.by && <span className="text-[10px] text-[#5C5850]"> · pinned by {pinned.by}</span>}
           </div>
           {isStaff && (
@@ -813,7 +814,7 @@ export default function Room({ user, code, name, title, onBack }) {
                       )}
                     </div>
                   ) : (
-                    m.text
+                    <Linkify text={m.text} mine={mine} />
                   )}
                 </div>
 
