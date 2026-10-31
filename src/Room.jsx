@@ -24,6 +24,9 @@ import {
   ShieldCheck,
   Bell,
   BellOff,
+  Search,
+  Images,
+  Timer,
 } from "lucide-react";
 import {
   addDoc,
@@ -41,6 +44,7 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  Timestamp,
   updateDoc,
 } from "firebase/firestore";
 import { db, getToken } from "./firebase.js";
@@ -54,7 +58,7 @@ import {
   useVoiceRecorder,
 } from "./Media.jsx";
 import CallView from "./Call.jsx";
-import { getSoundOn, playChime, setSoundOn } from "./sound.js";
+import { getGroupMuteUntil, getSoundOn, isGroupMuted, playChime, setGroupMute, setSoundOn } from "./sound.js";
 import Linkify from "./Linkify.jsx";
 
 const MENTION = /@sibiya\b/i;
@@ -71,6 +75,33 @@ const REACTIONS = [
   { key: "sad", emoji: "😢" },
   { key: "pray", emoji: "🙏" },
 ];
+
+const ROW = "w-full flex items-center gap-3 px-4 py-3 text-[14px] text-[#F5F1E8] bg-[#161514]";
+const CHIP = "rounded-full border border-[#C9A44C]/50 px-4 py-1.5 text-[12px]";
+
+const DISAPPEAR_OPTIONS = [
+  { label: "Off", seconds: 0 },
+  { label: "24 hours", seconds: 86400 },
+  { label: "7 days", seconds: 604800 },
+  { label: "90 days", seconds: 7776000 },
+];
+const MUTE_OPTIONS = [
+  { label: "8 hours", ms: 8 * 3600 * 1000 },
+  { label: "1 week", ms: 7 * 24 * 3600 * 1000 },
+  { label: "Always", ms: -1 },
+];
+
+function disappearLabel(sec) {
+  const o = DISAPPEAR_OPTIONS.find(x => x.seconds === sec);
+  return o ? o.label : "On";
+}
+
+function muteLabel(until) {
+  if (until === -1) return "Always";
+  if (until > Date.now())
+    return "Until " + new Date(until).toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" });
+  return "Off";
+}
 
 function timeOf(m) {
   const d = m.createdAt?.toDate?.();
@@ -98,6 +129,14 @@ export default function Room({ user, code, name, title, onBack }) {
   const [showPanel, setShowPanel] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(getSoundOn);
   const [replyTo, setReplyTo] = useState(null);
+  const [showSearch, setShowSearch] = useState(false);
+  const [showMedia, setShowMedia] = useState(false);
+  const [searchQ, setSearchQ] = useState("");
+  const [muteMenu, setMuteMenu] = useState(false);
+  const [disMenu, setDisMenu] = useState(false);
+  const [editDesc, setEditDesc] = useState(false);
+  const [descDraft, setDescDraft] = useState("");
+  const [muteUntil, setMuteUntil] = useState(() => getGroupMuteUntil(code));
   const inputRef = useRef(null);
   const [, setTick] = useState(0);
   const scrollRef = useRef(null);
@@ -111,6 +150,26 @@ export default function Room({ user, code, name, title, onBack }) {
   const isCoHost = coHosts.includes(user.uid);
   const isStaff = isHost || isCoHost;
   const aiOn = meta?.aiEnabled !== false;
+  const description = typeof meta?.description === "string" ? meta.description : "";
+  const disappearAfter = Number(meta?.disappearAfter) || 0;
+  const nowTs = Date.now();
+  const groupMuted = muteUntil === -1 || muteUntil > nowTs;
+  // messages whose disappearing time has passed are hidden right away
+  const visibleMessages = messages.filter(m => {
+    const t = m.expireAt?.toMillis?.();
+    return !t || t > nowTs;
+  });
+  const mediaMessages = visibleMessages
+    .filter(m => (m.type === "voice" || m.type === "file") && m.mediaId)
+    .reverse();
+  const q = searchQ.trim().toLowerCase();
+  const searchResults =
+    q.length >= 2
+      ? visibleMessages
+          .filter(m => m.type !== "notice" && typeof m.text === "string" && m.text.toLowerCase().includes(q))
+          .reverse()
+          .slice(0, 50)
+      : [];
   const locked = meta?.locked === true;
   const pinned = meta?.pinned?.text ? meta.pinned : null;
   const me = members.find(m => m.id === user.uid);
@@ -177,9 +236,9 @@ export default function Room({ user, code, name, title, onBack }) {
             if (c.type !== "added" || c.doc.metadata.hasPendingWrites) return false;
             const d = c.doc.data({ serverTimestamps: "estimate" });
             const t = d.createdAt?.toMillis?.() || 0;
-            return d.uid !== user.uid && Date.now() - t < 20000;
+            return d.uid !== user.uid && d.type !== "notice" && Date.now() - t < 20000;
           });
-          if (incoming) playChime();
+          if (incoming && !isGroupMuted(code)) playChime();
         }
         firstSnap = false;
         const list = snap.docs.map(d => ({
@@ -342,6 +401,7 @@ export default function Room({ user, code, name, title, onBack }) {
         ai: false,
         createdAt: serverTimestamp(),
       };
+      if (disappearAfter > 0) msg.expireAt = Timestamp.fromMillis(Date.now() + disappearAfter * 1000);
       if (reply) {
         msg.replyTo = {
           id: reply.id,
@@ -398,12 +458,16 @@ export default function Room({ user, code, name, title, onBack }) {
         setError("That is too big to send. Voice notes up to 60 seconds and files up to 900 KB work.");
         return;
       }
-      const mediaRef = await addDoc(collection(db, "chats", code, "media"), {
+      const expireAt =
+        disappearAfter > 0 ? Timestamp.fromMillis(Date.now() + disappearAfter * 1000) : null;
+      const mediaDoc = {
         data: Bytes.fromUint8Array(buf),
         mime: info.mime,
         uid: user.uid,
         createdAt: serverTimestamp(),
-      });
+      };
+      if (expireAt) mediaDoc.expireAt = expireAt;
+      const mediaRef = await addDoc(collection(db, "chats", code, "media"), mediaDoc);
       const msg = {
         text: info.type === "voice" ? "🎤 Voice note" : "📎 " + info.fileName,
         uid: user.uid,
@@ -414,6 +478,7 @@ export default function Room({ user, code, name, title, onBack }) {
         mime: info.mime,
         createdAt: serverTimestamp(),
       };
+      if (expireAt) msg.expireAt = expireAt;
       if (info.type === "voice") {
         msg.duration = Math.round(info.duration);
       } else {
@@ -582,6 +647,51 @@ export default function Room({ user, code, name, title, onBack }) {
     }
   }
 
+  function pickMute(ms) {
+    const until = ms === -1 ? -1 : ms === 0 ? 0 : Date.now() + ms;
+    setGroupMute(code, until);
+    setMuteUntil(until);
+    setMuteMenu(false);
+  }
+
+  async function saveDescription() {
+    const t = descDraft.trim().slice(0, 500);
+    setError("");
+    try {
+      await updateDoc(metaDoc(), { description: t ? t : deleteField() });
+      setEditDesc(false);
+    } catch {
+      setError("Couldn't save the description. Try again.");
+    }
+  }
+
+  async function pickDisappear(seconds) {
+    setError("");
+    try {
+      await updateDoc(metaDoc(), { disappearAfter: seconds ? seconds : deleteField() });
+      await addDoc(collection(db, "chats", code, "messages"), {
+        text: seconds
+          ? `${name} turned on disappearing messages. New messages disappear after ${disappearLabel(seconds)}.`
+          : `${name} turned off disappearing messages.`,
+        uid: user.uid,
+        name,
+        ai: false,
+        type: "notice",
+        createdAt: serverTimestamp(),
+      });
+      setDisMenu(false);
+    } catch {
+      setError("Couldn't change disappearing messages. Try again.");
+    }
+  }
+
+  function openFromSearch(m) {
+    setShowSearch(false);
+    setSearchQ("");
+    setShowPanel(false);
+    setTimeout(() => jumpTo(m.id), 150);
+  }
+
   async function renameGroup() {
     const t = window.prompt("New group name:", meta?.title || title || "");
     if (!t || !t.trim()) return;
@@ -674,13 +784,17 @@ export default function Room({ user, code, name, title, onBack }) {
         >
           <ArrowLeft size={18} />
         </button>
-        <div className="flex-1 min-w-0">
-          <div className="font-bold text-[15px] truncate">{meta?.title || title || "Group chat"}</div>
+        <button onClick={() => setShowPanel(true)} aria-label="Group info" className="flex-1 min-w-0 text-left">
+          <div className="font-bold text-[15px] truncate flex items-center gap-1.5">
+            <span className="truncate">{meta?.title || title || "Group chat"}</span>
+            {groupMuted && <BellOff size={13} className="text-[#8A8580] shrink-0" />}
+          </div>
           <div className="text-[10px] text-[#8A8580] tracking-wide truncate">
             Code: {code} · <span className="text-[#5FBF7A]">{onlineCount} online</span>
             {locked && <span className="text-[#C9A44C]"> · 🔒 Locked</span>}
+            {disappearAfter > 0 && <span className="text-[#C9A44C]"> · ⏱ {disappearLabel(disappearAfter)}</span>}
           </div>
-        </div>
+        </button>
         <button
           onClick={() => setShowPanel(true)}
           aria-label="Members"
@@ -727,12 +841,19 @@ export default function Room({ user, code, name, title, onBack }) {
       )}
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-5 space-y-3">
-        {messages.length === 0 && !error && (
+        {visibleMessages.length === 0 && !error && (
           <div className="text-center text-[13px] text-[#8A8580] pt-10 px-6">
             Say sawubona. Tap Invite to bring people in, and type @sibiya to ask the AI.
           </div>
         )}
-        {messages.map(m => {
+        {visibleMessages.map(m => {
+          if (m.type === "notice") {
+            return (
+              <div key={m.id} id={"msg-" + m.id} className="text-center text-[11px] text-[#8A8580] px-6 py-1">
+                {m.text}
+              </div>
+            );
+          }
           const mine = m.uid === user.uid;
           const ai = !!m.ai;
           const counts = REACTIONS.map(r => ({
@@ -1005,7 +1126,7 @@ export default function Room({ user, code, name, title, onBack }) {
             style={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))" }}
           >
             <div className="flex items-center justify-between mb-1">
-              <div className="font-bold text-[16px]">Members</div>
+              <div className="font-bold text-[16px]">Group info</div>
               <button
                 onClick={() => setShowPanel(false)}
                 aria-label="Close"
@@ -1016,6 +1137,124 @@ export default function Room({ user, code, name, title, onBack }) {
             </div>
             <div className="text-[12px] text-[#5FBF7A] mb-4">
               {onlineCount} online · {activeMembers.length} in group
+            </div>
+
+            <div className="mb-4 rounded-xl border border-[#232019] bg-[#0B0B0C] p-3">
+              <div className="flex items-center justify-between mb-1">
+                <div className="text-[10px] uppercase tracking-widest text-[#C9A44C]">About this group</div>
+                {isHost && !editDesc && (
+                  <button
+                    onClick={() => {
+                      setDescDraft(description);
+                      setEditDesc(true);
+                    }}
+                    className="text-[11px] text-[#C9A44C] underline"
+                  >
+                    {description ? "Edit" : "Add"}
+                  </button>
+                )}
+              </div>
+              {editDesc ? (
+                <div className="space-y-2">
+                  <textarea
+                    value={descDraft}
+                    onChange={e => setDescDraft(e.target.value.slice(0, 500))}
+                    rows={4}
+                    placeholder="What is this group about? Rules, topics, anything members should know."
+                    className="w-full bg-[#161514] border border-[#232019] rounded-lg px-3 py-2 text-[13px] outline-none focus:border-[#C9A44C]/60 placeholder:text-[#5C5850]"
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={saveDescription}
+                      className="rounded-lg bg-[#C9A44C] text-[#0B0B0C] px-4 py-1.5 text-[12px] font-semibold"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => setEditDesc(false)}
+                      className="rounded-lg border border-[#232019] text-[#D8D2C4] px-4 py-1.5 text-[12px]"
+                    >
+                      Cancel
+                    </button>
+                    <span className="ml-auto text-[10px] text-[#8A8580]">{descDraft.length}/500</span>
+                  </div>
+                </div>
+              ) : description ? (
+                <div className="text-[13px] text-[#D8D2C4] whitespace-pre-wrap break-words">
+                  <Linkify text={description} />
+                </div>
+              ) : (
+                <div className="text-[12px] text-[#8A8580]">
+                  {isHost ? "Add a description so people know what this group is for." : "No description yet."}
+                </div>
+              )}
+            </div>
+
+            <div className="mb-4 rounded-xl border border-[#232019] overflow-hidden divide-y divide-[#232019]">
+              <button onClick={() => setShowSearch(true)} className={ROW}>
+                <Search size={16} className="text-[#C9A44C]" />
+                <span className="flex-1 text-left">Search</span>
+              </button>
+              <button onClick={() => setShowMedia(true)} className={ROW}>
+                <Images size={16} className="text-[#C9A44C]" />
+                <span className="flex-1 text-left">Group media</span>
+                <span className="text-[12px] text-[#8A8580]">{mediaMessages.length}</span>
+              </button>
+              <button onClick={() => setMuteMenu(v => !v)} className={ROW}>
+                <BellOff size={16} className="text-[#C9A44C]" />
+                <span className="flex-1 text-left">Mute notifications</span>
+                <span className="text-[12px] text-[#8A8580]">{muteLabel(muteUntil)}</span>
+              </button>
+              {muteMenu && (
+                <div className="flex flex-wrap gap-2 px-4 py-3 bg-[#0B0B0C]">
+                  {MUTE_OPTIONS.map(o => (
+                    <button key={o.label} onClick={() => pickMute(o.ms)} className={`${CHIP} text-[#C9A44C]`}>
+                      {o.label}
+                    </button>
+                  ))}
+                  {groupMuted && (
+                    <button onClick={() => pickMute(0)} className={`${CHIP} text-[#F5F1E8]`}>
+                      Unmute
+                    </button>
+                  )}
+                </div>
+              )}
+              <button onClick={() => setDisMenu(v => !v)} className={ROW}>
+                <Timer size={16} className="text-[#C9A44C]" />
+                <span className="flex-1 text-left">Disappearing messages</span>
+                <span className="text-[12px] text-[#8A8580]">{disappearLabel(disappearAfter)}</span>
+              </button>
+              {disMenu && (
+                <div className="px-4 py-3 bg-[#0B0B0C] space-y-2">
+                  {isHost ? (
+                    <>
+                      <div className="flex flex-wrap gap-2">
+                        {DISAPPEAR_OPTIONS.map(o => (
+                          <button
+                            key={o.label}
+                            onClick={() => pickDisappear(o.seconds)}
+                            className={`${CHIP} ${
+                              o.seconds === disappearAfter
+                                ? "bg-[#C9A44C] text-[#0B0B0C] font-semibold"
+                                : "text-[#C9A44C]"
+                            }`}
+                          >
+                            {o.label}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="text-[11px] text-[#8A8580]">
+                        Applies to new messages only. They are hidden as soon as time is up and removed from the
+                        database shortly after.
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-[12px] text-[#8A8580]">
+                      Only the host can change this. When it is on, new messages disappear after the set time.
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="mb-4">
@@ -1070,6 +1309,7 @@ export default function Room({ user, code, name, title, onBack }) {
               </div>
             )}
 
+            <div className="text-[10px] uppercase tracking-widest text-[#C9A44C] mb-2">Members</div>
             <div className="space-y-1">
               {sortedMembers.map(m => {
                 const online = isOnline(m);
@@ -1175,6 +1415,102 @@ export default function Room({ user, code, name, title, onBack }) {
                 This group was created before host controls existed, so it has no host yet.
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {showSearch && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-[#0B0B0C] text-[#F5F1E8]">
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-[#1E1D1A]">
+            <button
+              onClick={() => {
+                setShowSearch(false);
+                setSearchQ("");
+              }}
+              aria-label="Close search"
+              className="w-8 h-8 rounded-full text-[#8A8580] hover:text-[#C9A44C] flex items-center justify-center"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <input
+              autoFocus
+              value={searchQ}
+              onChange={e => setSearchQ(e.target.value)}
+              placeholder="Search messages"
+              className="flex-1 bg-[#161514] border border-[#232019] rounded-xl px-3 py-2 text-[14px] outline-none focus:border-[#C9A44C]/60 placeholder:text-[#5C5850]"
+            />
+          </div>
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+            {q.length < 2 ? (
+              <div className="text-center text-[12px] text-[#8A8580] pt-8">
+                Type at least 2 letters. This searches the latest 100 messages.
+              </div>
+            ) : searchResults.length === 0 ? (
+              <div className="text-center text-[12px] text-[#8A8580] pt-8">No messages found.</div>
+            ) : (
+              searchResults.map(m => (
+                <button
+                  key={m.id}
+                  onClick={() => openFromSearch(m)}
+                  className="w-full text-left rounded-xl border border-[#232019] bg-[#161514] px-3 py-2"
+                >
+                  <div className="flex justify-between text-[11px] text-[#C9A44C]">
+                    <span>{m.name}</span>
+                    <span className="text-[#8A8580]">{timeOf(m)}</span>
+                  </div>
+                  <div className="text-[13px] text-[#D8D2C4] break-words">{String(m.text).slice(0, 160)}</div>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {showMedia && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-[#0B0B0C] text-[#F5F1E8]">
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-[#1E1D1A]">
+            <button
+              onClick={() => setShowMedia(false)}
+              aria-label="Close group media"
+              className="w-8 h-8 rounded-full text-[#8A8580] hover:text-[#C9A44C] flex items-center justify-center"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <div className="font-bold text-[16px]">Group media</div>
+            <div className="text-[12px] text-[#8A8580]">{mediaMessages.length}</div>
+          </div>
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+            {mediaMessages.length === 0 ? (
+              <div className="text-center text-[12px] text-[#8A8580] pt-8">
+                No voice notes or files shared yet.
+              </div>
+            ) : (
+              mediaMessages.map(m => {
+                const mine = m.uid === user.uid;
+                return (
+                  <div key={m.id} className={`flex flex-col ${mine ? "items-end" : "items-start"}`}>
+                    <div className="text-[10px] uppercase tracking-widest mb-1 text-[#C9A44C]">
+                      {mine ? "You" : m.name}{" "}
+                      <span className="text-[#8A8580] normal-case tracking-normal">· {timeOf(m)}</span>
+                    </div>
+                    <div
+                      className={`px-4 py-2.5 rounded-2xl text-[14px] max-w-full ${
+                        mine
+                          ? "bg-[#C9A44C] text-[#0B0B0C] rounded-br-sm"
+                          : "bg-[#161514] border border-[#232019] rounded-bl-sm"
+                      }`}
+                    >
+                      {m.type === "voice" ? (
+                        <VoiceBubble code={code} m={m} mine={mine} />
+                      ) : (
+                        <FileBubble code={code} m={m} mine={mine} />
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+            <div className="text-center text-[11px] text-[#8A8580] pt-2">Shows media from the latest 100 messages.</div>
           </div>
         </div>
       )}

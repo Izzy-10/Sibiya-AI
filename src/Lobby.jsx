@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Share2, Check, X, Bell, BellOff } from "lucide-react";
+import { Share2, Check, X, Bell, BellOff, Info } from "lucide-react";
 import {
   collection,
   doc,
@@ -12,7 +12,8 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase.js";
 import Logo from "./Logo.jsx";
-import { getSoundOn, playChime, setSoundOn } from "./sound.js";
+import { getSoundOn, isGroupMuted, playChime, setGroupMute, setSoundOn } from "./sound.js";
+import Linkify from "./Linkify.jsx";
 
 const ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
 const GROUPS_KEY = "sibiya_groups";
@@ -82,21 +83,40 @@ const outlineBtn =
 const cardCls = "rounded-2xl border border-[#232019] bg-[#161514] p-4 space-y-3";
 const labelCls = "text-[10px] uppercase tracking-widest text-[#C9A44C]";
 
+const LOBBY_MUTE = [
+  { label: "8 hours", ms: 8 * 3600 * 1000 },
+  { label: "1 week", ms: 7 * 24 * 3600 * 1000 },
+  { label: "Always", ms: -1 },
+];
+
+function disappearText(sec) {
+  if (sec === 86400) return "24 hours";
+  if (sec === 604800) return "7 days";
+  if (sec === 7776000) return "90 days";
+  return "a set time";
+}
+
 // One row in "Your groups": shows the group name and how many new messages
 function GroupRow({ g, user, onOpen, onForget, onTitle }) {
   const [unread, setUnread] = useState(0);
   const [title, setTitle] = useState(g.title || "");
   const [preview, setPreview] = useState("");
+  const [desc, setDesc] = useState("");
+  const [disappear, setDisappear] = useState(0);
+  const [open, setOpen] = useState(false);
+  const [, setMuteTick] = useState(0);
 
   useEffect(() => {
     const unsubMeta = onSnapshot(
       doc(db, "chats", g.code, "info", "meta"),
       snap => {
-        const t = snap.exists() ? snap.data().title : "";
-        if (t) {
-          setTitle(t);
-          onTitle(g.code, t);
+        const d = snap.exists() ? snap.data() : {};
+        if (d.title) {
+          setTitle(d.title);
+          onTitle(g.code, d.title);
         }
+        setDesc(typeof d.description === "string" ? d.description : "");
+        setDisappear(Number(d.disappearAfter) || 0);
       },
       () => {}
     );
@@ -119,7 +139,7 @@ function GroupRow({ g, user, onOpen, onForget, onTitle }) {
       q,
       snap => {
         const n = snap.docs.filter(d => d.data().uid !== user.uid).length;
-        if (!first && n > prev) playChime();
+        if (!first && n > prev && !isGroupMuted(g.code)) playChime();
         first = false;
         prev = n;
         setUnread(n);
@@ -132,6 +152,8 @@ function GroupRow({ g, user, onOpen, onForget, onTitle }) {
       snap => {
         const m = snap.docs[0]?.data();
         if (!m) return setPreview("");
+        const gone = m.expireAt?.toMillis?.();
+        if (gone && gone <= Date.now()) return setPreview("");
         const who = m.ai ? "Sibiya AI" : m.uid === user.uid ? "You" : m.name || "Someone";
         setPreview((who + ": " + String(m.text || "")).replace(/\s+/g, " ").slice(0, 90));
       },
@@ -145,15 +167,22 @@ function GroupRow({ g, user, onOpen, onForget, onTitle }) {
     };
   }, [g.code, user.uid]);
 
+  function pickMute(ms) {
+    setGroupMute(g.code, ms === 0 ? 0 : ms === -1 ? -1 : Date.now() + ms);
+    setMuteTick(t => t + 1);
+  }
+
   return (
+    <div className="space-y-1">
     <div className="flex items-center gap-1 rounded-xl border border-[#232019] bg-[#0B0B0C] pl-3 pr-1">
       <button
         onClick={() => onOpen(g)}
         className="flex-1 min-w-0 flex items-center gap-3 py-2.5 text-left"
       >
         <div className="flex-1 min-w-0">
-          <div className={`text-[14px] truncate ${unread > 0 ? "font-bold" : ""}`}>
-            {title || "Group chat"}
+          <div className={`text-[14px] truncate flex items-center gap-1.5 ${unread > 0 ? "font-bold" : ""}`}>
+            <span className="truncate">{title || "Group chat"}</span>
+            {isGroupMuted(g.code) && <BellOff size={12} className="text-[#8A8580] shrink-0" />}
           </div>
           {preview ? (
             <div className={`text-[12px] truncate ${unread > 0 ? "text-[#D8D2C4]" : "text-[#8A8580]"}`}>{preview}</div>
@@ -168,12 +197,55 @@ function GroupRow({ g, user, onOpen, onForget, onTitle }) {
         )}
       </button>
       <button
+        onClick={() => setOpen(v => !v)}
+        aria-label="Group info"
+        aria-expanded={open}
+        className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center ${
+          open ? "text-[#C9A44C]" : "text-[#8A8580] hover:text-[#C9A44C]"
+        }`}
+      >
+        <Info size={15} />
+      </button>
+      <button
         onClick={() => onForget(g)}
         aria-label="Remove from this list"
         className="w-8 h-8 shrink-0 rounded-full text-[#5C5850] hover:text-[#E07A66] flex items-center justify-center"
       >
         <X size={14} />
       </button>
+    </div>
+    {open && (
+      <div className="rounded-xl border border-[#232019] bg-[#0B0B0C] px-3 py-3 space-y-2 text-[12px]">
+        <div className="text-[10px] uppercase tracking-widest text-[#C9A44C]">About this group</div>
+        <div className="text-[#D8D2C4] whitespace-pre-wrap break-words text-[13px]">
+          {desc ? <Linkify text={desc} /> : <span className="text-[#8A8580]">No description yet.</span>}
+        </div>
+        <div className="text-[#8A8580]">
+          Code: {g.code}
+          {disappear > 0 ? " · Messages disappear after " + disappearText(disappear) : ""}
+        </div>
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <span className="text-[#8A8580]">Mute notifications:</span>
+          {LOBBY_MUTE.map(o => (
+            <button
+              key={o.label}
+              onClick={() => pickMute(o.ms)}
+              className="rounded-full border border-[#232019] px-3 py-1 text-[11px] text-[#C9A44C]"
+            >
+              {o.label}
+            </button>
+          ))}
+          {isGroupMuted(g.code) && (
+            <button
+              onClick={() => pickMute(0)}
+              className="rounded-full border border-[#232019] px-3 py-1 text-[11px] text-[#F5F1E8]"
+            >
+              Unmute
+            </button>
+          )}
+        </div>
+      </div>
+    )}
     </div>
   );
 }
