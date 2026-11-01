@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, Volume2, Paperclip, X } from "lucide-react";
-import { getToken } from "./firebase.js";
+import { db, getToken } from "./firebase.js";
+import { deleteDoc, doc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
 import Linkify from "./Linkify.jsx";
 
 const GREETING = { role: "assistant", content: "Sawubona. I'm Sibiya AI. What are we working on today?" };
 const ERROR_TEXT = "Something broke on my end — try again.";
-const KEEP = 40; // how many messages are kept on this device
+const KEEP = 40; // how many messages are kept (in your account and on this device)
 
 // The signed-in person's id, read from their sign-in token (used to keep each account's chat separate)
 function uidFromToken(token) {
@@ -29,18 +30,31 @@ function loadSaved(uid) {
   }
 }
 
-// Saves text only (a PDF attachment is kept as its file name, not the file itself)
+// Text only (a PDF attachment is kept as its file name, not the file itself)
+function toSaved(messages) {
+  return messages
+    .map(m => ({
+      role: m.role,
+      content: String(typeof m.content === "string" ? m.content : m._display || "").slice(0, 8000),
+    }))
+    .filter(m => m.content && m.content !== ERROR_TEXT)
+    .slice(-KEEP);
+}
+
+// Copy kept on this device, so the chat also shows up instantly and works offline
 function saveChat(uid, messages) {
   try {
-    const list = messages
-      .map(m => ({
-        role: m.role,
-        content: String(typeof m.content === "string" ? m.content : m._display || "").slice(0, 8000),
-      }))
-      .filter(m => m.content && m.content !== ERROR_TEXT)
-      .slice(-KEEP);
-    localStorage.setItem("sibiya_solo:" + uid, JSON.stringify(list));
+    localStorage.setItem("sibiya_solo:" + uid, JSON.stringify(toSaved(messages)));
   } catch {}
+}
+
+// The chat stored in the person's account, if it is valid
+function readCloud(data) {
+  if (!data || !Array.isArray(data.messages)) return null;
+  const list = data.messages
+    .filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+    .slice(-KEEP);
+  return list.length >= 2 ? list : null;
 }
 
 function clearSaved(uid) {
@@ -80,6 +94,10 @@ export default function App() {
   const [historyReady, setHistoryReady] = useState(false);
   const scrollRef = useRef(null);
   const fileInputRef = useRef(null);
+  const dirtyRef = useRef(false); // true while this device has changes not yet saved to the account
+  const lastJsonRef = useRef(""); // the version of the chat known to be in the account
+  const loadingRef = useRef(false);
+  loadingRef.current = loading;
 
   useEffect(() => {
     if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = () => {};
@@ -104,22 +122,68 @@ export default function App() {
     };
   }, []);
 
-  // Keep the chat saved on this device as it grows
+  // Follow the chat stored in the account: other devices' changes show up here
+  useEffect(() => {
+    if (!uid) return;
+    let first = true;
+    const unsub = onSnapshot(
+      doc(db, "soloChats", uid),
+      snap => {
+        if (snap.metadata.hasPendingWrites) return; // our own write on its way
+        const remote = snap.exists() ? readCloud(snap.data()) : null;
+        if (first) {
+          first = false;
+          if (!remote) return; // nothing in the account yet: this device's copy gets uploaded
+        }
+        if (dirtyRef.current || loadingRef.current) return; // do not overwrite what is being typed or answered
+        const json = JSON.stringify(remote || []);
+        if (json === lastJsonRef.current) return;
+        lastJsonRef.current = json;
+        setMessages(remote || [GREETING]);
+      },
+      () => {}
+    );
+    return unsub;
+  }, [uid]);
+
+  // Keep the chat saved: on this device straight away, and in the account a moment later
   useEffect(() => {
     if (!uid || !historyReady) return;
     saveChat(uid, messages);
-  }, [messages, uid, historyReady]);
+    const list = toSaved(messages);
+    const json = JSON.stringify(list);
+    if (list.length < 2 || json === lastJsonRef.current) {
+      dirtyRef.current = false;
+      return;
+    }
+    dirtyRef.current = true;
+    if (loading) return; // wait for the answer, then save both together
+    const t = setTimeout(() => {
+      setDoc(doc(db, "soloChats", uid), { messages: list, updatedAt: serverTimestamp() })
+        .then(() => {
+          lastJsonRef.current = json;
+          dirtyRef.current = false;
+        })
+        .catch(() => {}); // offline: the copy on this device is still kept
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [messages, uid, historyReady, loading]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, loading]);
 
   function newChat() {
-    if (!window.confirm("Start a new chat? This clears the saved conversation on this device.")) return;
+    if (!window.confirm("Start a new chat? This deletes the saved conversation from your account and from this device.")) return;
     window.speechSynthesis?.cancel();
     setMessages([GREETING]);
     setPendingFile(null);
-    if (uid) clearSaved(uid);
+    dirtyRef.current = false;
+    lastJsonRef.current = "";
+    if (uid) {
+      clearSaved(uid);
+      deleteDoc(doc(db, "soloChats", uid)).catch(() => {});
+    }
   }
 
   function handleFileSelect(e) {
