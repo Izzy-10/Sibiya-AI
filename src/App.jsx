@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Send, Volume2, Paperclip, X } from "lucide-react";
 import { db, getToken } from "./firebase.js";
 import { deleteDoc, doc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
-import Linkify from "./Linkify.jsx";
+import MessageText, { speechText } from "./MessageText.jsx";
 
 const GREETING = { role: "assistant", content: "Sawubona. I'm Sibiya AI. What are we working on today?" };
 const ERROR_TEXT = "Something broke on my end — try again.";
@@ -234,7 +234,7 @@ export default function App() {
       const data = await response.json();
       const reply = data.content?.find(c => c.type === "text")?.text || "...";
       setMessages(prev => [...prev, { role: "assistant", content: reply }]);
-      speak(reply, voiceOn);
+      speak(speechText(reply), voiceOn);
     } catch (e) {
       setMessages(prev => [...prev, { role: "assistant", content: ERROR_TEXT }]);
     } finally {
@@ -349,11 +349,15 @@ export default function App() {
                   : "bg-[#161514] text-[#F5F1E8] rounded-bl-sm border border-[#232019]"
               }`}
             >
-              <Linkify text={typeof m.content === "string" ? m.content : m._display} mine={m.role === "user"} />
+              <MessageText
+                text={typeof m.content === "string" ? m.content : m._display}
+                mine={m.role === "user"}
+                allowFiles={m.role === "assistant"}
+              />
             </div>
             {m.role === "assistant" && (
               <button
-                onClick={() => speak(m.content, true)}
+                onClick={() => speak(speechText(m.content), true)}
                 className="w-6 h-6 shrink-0 rounded-full flex items-center justify-center text-[#8A8580] hover:text-[#C9A44C] transition-colors"
                 aria-label="Play message"
               >

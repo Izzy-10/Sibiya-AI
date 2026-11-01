@@ -60,6 +60,7 @@ import {
 import CallView from "./Call.jsx";
 import { getGroupMuteUntil, getSoundOn, isGroupMuted, playChime, setGroupMute, setSoundOn } from "./sound.js";
 import Linkify from "./Linkify.jsx";
+import MessageText, { previewText } from "./MessageText.jsx";
 
 const MENTION = /@sibiya\b/i;
 const ONLINE_WINDOW_MS = 75000;
@@ -429,7 +430,7 @@ export default function Room({ user, code, name, title, onBack }) {
       id: m.id,
       uid: m.uid || "",
       name: m.name || "Someone",
-      text: String(m.text || "").slice(0, 120),
+      text: previewText(m.text).slice(0, 120),
     });
     setTimeout(() => inputRef.current?.focus(), 0);
   }
@@ -935,7 +936,7 @@ export default function Room({ user, code, name, title, onBack }) {
                       )}
                     </div>
                   ) : (
-                    <Linkify text={m.text} mine={mine} />
+                    <MessageText text={m.text} mine={mine} allowFiles={ai} />
                   )}
                 </div>
 

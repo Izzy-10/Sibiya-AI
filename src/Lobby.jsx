@@ -14,6 +14,7 @@ import { db } from "./firebase.js";
 import Logo from "./Logo.jsx";
 import { getSoundOn, isGroupMuted, playChime, setGroupMute, setSoundOn } from "./sound.js";
 import Linkify from "./Linkify.jsx";
+import { previewText } from "./MessageText.jsx";
 
 const ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
 const GROUPS_KEY = "sibiya_groups";
@@ -155,7 +156,7 @@ function GroupRow({ g, user, onOpen, onForget, onTitle }) {
         const gone = m.expireAt?.toMillis?.();
         if (gone && gone <= Date.now()) return setPreview("");
         const who = m.ai ? "Sibiya AI" : m.uid === user.uid ? "You" : m.name || "Someone";
-        setPreview((who + ": " + String(m.text || "")).replace(/\s+/g, " ").slice(0, 90));
+        setPreview((who + ": " + previewText(m.text)).replace(/\s+/g, " ").slice(0, 90));
       },
       () => setPreview("")
     );
