@@ -119,7 +119,7 @@
 
     <h2>Solo chat</h2>
     <ul>
-      <li>Messages you type in a solo chat are sent to Anthropic's Claude API to generate a reply. They are not stored on Sibiya AI's servers. Your last 40 messages are saved in your own browser, on your device and tied to your account, so a refresh does not lose them. They are not sent to anyone else. Tapping New chat or clearing your browser data removes them.</li>
+      <li>Messages you type in a solo chat are sent to Anthropic's Claude API to generate a reply. Your last 40 messages are also saved in your Sibiya AI account (in Google Firebase) and on your device, so your chat comes back after a refresh and follows you to your other devices. Only you can read them, and they are not used for anything else. A PDF you attach is saved as its file name only. Tapping New chat deletes the saved chat from your account and from that device.</li>
       <li>PDFs you attach in a solo chat are sent to the Claude API so it can read them. They are not saved or logged separately.</li>
     </ul>
 
@@ -129,7 +129,7 @@
       <li><strong>Anyone with a group's code or invite link can read it and post in it.</strong> Only share the code with people you trust, and don't post private or sensitive information in a group.</li>
        <li><strong>What is saved with each message:</strong> the text, the display name you typed, the time, an ID for your device (an anonymous ID, or your Google account ID if you are signed in), and any emoji reactions added to it.</li>
       <li><strong>Voice notes and files.</strong> A voice note (up to 60 seconds) or a file (up to about 900 KB) that you send in a group is stored in the same Google Firebase database, so everyone in the group can play or download it. Photos are shrunk before sending. Deleting your message also deletes its voice note or file. Your microphone is used only while you are recording.</li>
-      <li><strong>Online status and members.</strong> When you open a group, your display name, your anonymous or Google ID, whether you are online, and the time you were last seen are saved so other members can see who is online. The group host (and any co-hosts) can see who is in the group and can mute or remove people. A host can also lock the group and pin a note, which everyone in the group can see.</li>
+      <li><strong>Online status and members.</strong> When you open a group, your display name, your anonymous or Google ID, whether you are online, and the time you were last seen are saved so other members can see who is online. The group host (and any co-hosts) can see who is in the group and can mute or remove people. A host can also lock the group, pin a note and write a group description, which everyone in the group can see. A host can turn on disappearing messages, so new messages are hidden and then deleted after the chosen time. Your choice to mute a group is saved only in your own browser.</li>
       <li><strong>No account needed to join a group.</strong> We never ask for a phone number or password.</li>
       <li><strong>Removal:</strong> you can delete your own messages with the Delete link under them, and they are removed for everyone in the group. To ask for a whole group to be removed, contact us using the details below.</li>
     </ul>
