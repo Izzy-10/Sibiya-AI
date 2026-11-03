@@ -61,6 +61,7 @@ import CallView from "./Call.jsx";
 import { getGroupMuteUntil, getSoundOn, isGroupMuted, playChime, setGroupMute, setSoundOn } from "./sound.js";
 import Linkify from "./Linkify.jsx";
 import MessageText, { previewText } from "./MessageText.jsx";
+import Menu from "./Menu.jsx";
 
 const MENTION = /@sibiya\b/i;
 const ONLINE_WINDOW_MS = 75000;
@@ -144,6 +145,15 @@ export default function Room({ user, code, name, title, onBack }) {
   const messagesRef = useRef([]);
   const fileInputRef = useRef(null);
   const kickedRef = useRef(false);
+  // when this group was last read before this visit (used by "Catch me up")
+  const prevReadRef = useRef(null);
+  if (prevReadRef.current === null) {
+    try {
+      prevReadRef.current = Number(localStorage.getItem("sibiya-lastread:" + code)) || 0;
+    } catch {
+      prevReadRef.current = 0;
+    }
+  }
 
   const hostUid = meta?.hostUid || "";
   const coHosts = Array.isArray(meta?.coHosts) ? meta.coHosts : [];
@@ -353,6 +363,7 @@ export default function Room({ user, code, name, title, onBack }) {
         body: JSON.stringify({
           mode: "room",
           code,
+          persona: meta?.persona || "",
           title: meta?.title || title || "",
           asker,
           transcript: recent,
@@ -815,11 +826,24 @@ export default function Room({ user, code, name, title, onBack }) {
         </button>
         <button
           onClick={share}
-          className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest rounded-full px-3 py-1.5 border border-[#C9A44C]/50 text-[#C9A44C]"
+          aria-label="Invite people"
+          className="w-9 h-9 shrink-0 rounded-full border border-[#C9A44C]/50 text-[#C9A44C] flex items-center justify-center"
         >
-          {copied ? <Check size={13} /> : <Share2 size={13} />}
-          {copied ? "Copied" : "Invite"}
+          {copied ? <Check size={16} /> : <Share2 size={16} />}
         </button>
+        <Menu
+          room={{
+            code,
+            name,
+            user,
+            meta,
+            isHost,
+            isStaff,
+            members: activeMembers,
+            messages: visibleMessages,
+            prevRead: prevReadRef.current,
+          }}
+        />
       </div>
 
       {pinned && (

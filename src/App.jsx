@@ -3,6 +3,7 @@ import { Send, Volume2, Paperclip, X } from "lucide-react";
 import { db, getToken } from "./firebase.js";
 import { deleteDoc, doc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
 import MessageText, { speechText } from "./MessageText.jsx";
+import Menu from "./Menu.jsx";
 
 const GREETING = { role: "assistant", content: "Sawubona. I'm Sibiya AI. What are we working on today?" };
 const ERROR_TEXT = "Something broke on my end — try again.";
@@ -332,10 +333,11 @@ export default function App() {
           >
             voice {voiceOn ? "on" : "off"}
           </button>
-          <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-[#C9A44C] border border-[#C9A44C]/40 rounded-full px-2 py-1">
+          <div className="hidden sm:flex items-center gap-1 text-[10px] uppercase tracking-widest text-[#C9A44C] border border-[#C9A44C]/40 rounded-full px-2 py-1">
             <span className="w-1.5 h-1.5 rounded-full bg-[#A13D2D]" />
             online
           </div>
+                  <Menu />
         </div>
       </div>
 

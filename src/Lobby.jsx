@@ -12,6 +12,7 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase.js";
 import Logo from "./Logo.jsx";
+import Menu from "./Menu.jsx";
 import { getSoundOn, isGroupMuted, playChime, setGroupMute, setSoundOn } from "./sound.js";
 import Linkify from "./Linkify.jsx";
 import { previewText } from "./MessageText.jsx";
@@ -511,6 +512,9 @@ export default function Lobby({ user, authError, initialCode, onEnterRoom, onSol
             <div>
               <div className="font-bold text-[16px] tracking-tight">SIBIYA AI</div>
               <div className="text-[10px] text-[#8A8580] tracking-wide">Umoya Wesizwe SakwaZulu</div>
+            </div>
+            <div className="ml-auto lg:ml-8">
+              <Menu />
             </div>
           </div>
           {signedIn}
