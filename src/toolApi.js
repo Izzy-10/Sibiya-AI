@@ -9,9 +9,15 @@ export async function callTool(body) {
     headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
     body: JSON.stringify(body),
   });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || "Something went wrong. Try again.");
-  return data;
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    if (data && data.error) throw new Error(data.error);
+    // the server did not answer with a normal message: say what happened
+    if (res.status === 404) throw new Error("This tool isn't on the server yet (error 404). Check that api/tool.js is in the api folder.");
+    if (res.status === 504 || res.status === 408) throw new Error("That took too long (error " + res.status + "). Try again in a moment.");
+    throw new Error("The server had a problem (error " + res.status + "). Try again.");
+  }
+  return data || {};
 }
 
 export function uidFromToken(token) {
