@@ -1,91 +1,103 @@
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db, getToken } from "./firebase.js";
 
-const OWNER_EMAIL = "sizwescelimpilo5@gmail.com";
-const MASTER_KEY_STORAGE = "sibiya_master_key";
+var OWNER_EMAIL = "sizwescelimpilo5@gmail.com";
+var MASTER_KEY_STORAGE = "sibiya_master_key";
 
 function decodeToken(token) {
   try {
-    const p = http://token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-    return http://JSON.parse(atob(p));
-  } catch {
+    var p = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(p));
+  } catch (e) {
     return {};
   }
 }
 
-export function getMasterKey() {
+function getMasterKey() {
   try {
-    return http://localStorage.getItem(MASTER_KEY_STORAGE) || "";
-  } catch {
+    return localStorage.getItem(MASTER_KEY_STORAGE) || "";
+  } catch (e) {
     return "";
   }
 }
 
-export function isMaster(token) {
+function isMaster(token) {
   try {
-    const email = (decodeToken(token).email || "").toLowerCase();
+    var email = (decodeToken(token).email || "").toLowerCase();
     return email === OWNER_EMAIL.toLowerCase() || !!getMasterKey();
-  } catch {
+  } catch (e) {
     return false;
   }
 }
 
 export async function callTool(body) {
-  const token = await getToken();
-  const master = isMaster(token);
-  const mkey = getMasterKey();
+  var token = await getToken();
+  var master = isMaster(token);
+  var mkey = getMasterKey();
 
-  const res = await fetch("/api/tool", {
+  var headers = {};
+  headers["Content-Type"] = "application/json";
+  headers["Authorization"] = "Bearer " + token;
+  if (mkey) headers["X-Master-Key"] = mkey;
+  if (master) headers["X-Is-Owner"] = "true";
+
+  var payload = {};
+  Object.assign(payload, body);
+  payload._isOwner = master;
+  payload._ownerEmail = OWNER_EMAIL;
+
+  var res = await fetch("/api/tool", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: "Bearer " + token,
-      ...(mkey ? { "X-Master-Key": mkey } : {}),
-      ...(master ? { "X-Is-Owner": "true" } : {}),
-    },
-    body: http://JSON.stringify({
-      ...body,
-      _isOwner: master,
-      _ownerEmail: OWNER_EMAIL,
-    }),
+    headers: headers,
+    body: JSON.stringify(payload)
   });
 
-  const data = await http://res.json().catch(() => null);
+  var data = null;
+  try {
+    data = await res.json();
+  } catch (e) {
+    data = null;
+  }
+
   if (!res.ok) {
-    throw new Error(data?.error || "Server error " + http://res.status);
+    var msg = (data && data.error) ? data.error : "Server error " + res.status;
+    throw new Error(msg);
   }
   return data || {};
 }
 
 export function uidFromToken(token) {
   try {
-    return decodeToken(token).sub || decodeToken(token).user_id || null;
-  } catch {
+    var d = decodeToken(token);
+    return d.sub || d.user_id || null;
+  } catch (e) {
     return null;
   }
 }
 
 export async function currentUid() {
   try {
-    return uidFromToken(await getToken());
-  } catch {
+    var t = await getToken();
+    return uidFromToken(t);
+  } catch (e) {
     return null;
   }
 }
 
 export function savedName() {
   try {
-    return http://localStorage.getItem("sibiya_name") || "";
-  } catch {
+    return localStorage.getItem("sibiya_name") || "";
+  } catch (e) {
     return "";
   }
 }
 
 export function savedGroups() {
   try {
-    const a = http://JSON.parse(localStorage.getItem("sibiya_groups") || "[]");
-    return http://Array.isArray(a) ? http://a.filter(g => g && typeof http://g.code === "string") : [];
-  } catch {
+    var a = JSON.parse(localStorage.getItem("sibiya_groups") || "[]");
+    if (!Array.isArray(a)) return [];
+    return a.filter(function(g) { return g && typeof g.code === "string"; });
+  } catch (e) {
     return [];
   }
 }
@@ -93,18 +105,18 @@ export function savedGroups() {
 export async function postNotice(code, uid, name, text) {
   await addDoc(collection(db, "chats", code, "messages"), {
     text: String(text).slice(0, 500),
-    uid,
-    name,
+    uid: uid,
+    name: name,
     ai: false,
     type: "notice",
-    createdAt: serverTimestamp(),
+    createdAt: serverTimestamp()
   });
 }
 
 export function copyToClipboard(text) {
   try {
-    return http://navigator.clipboard.writeText(text);
-  } catch {
-    return http://Promise.reject();
+    return navigator.clipboard.writeText(text);
+  } catch (e) {
+    return Promise.reject();
   }
 }
