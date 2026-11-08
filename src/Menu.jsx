@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Menu as MenuIcon, X, Feather, Hourglass, ScrollText, HelpCircle, Wallet, Sparkles, Home, Info, LifeBuoy, Shield, Share2 } from "lucide-react";
+import { Menu as MenuIcon, X, Feather, Hourglass, ScrollText, HelpCircle, Wallet, Sparkles, Home, Info, LifeBuoy, Shield, Share2, FileText, Bot } from "lucide-react";
 import Izibongo from "./Izibongo.jsx";
 import Capsule from "./Capsule.jsx";
 import CatchUp from "./CatchUp.jsx";
@@ -44,6 +44,8 @@ export default function Menu({ room }) {
     { href: "/about.html", icon: Info, label: "About" },
     { href: "/support.html", icon: LifeBuoy, label: "Support" },
     { href: "/privacy.html", icon: Shield, label: "Privacy" },
+    { href: "/terms-and-conditions.html", icon: FileText, label: "Terms" },
+    { href: "/visitor-ai-policy.html", icon: Bot, label: "Visitor AI access" },
   ];
 
   const Item = ({ it }) => (
