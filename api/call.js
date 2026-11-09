@@ -1,44 +1,26 @@
 import * as LK from "livekit-server-sdk";
+import { verifyFirebaseToken } from "../lib/auth.js";
 
 const { AccessToken, RoomServiceClient } = LK;
 
-const FIREBASE_API_KEY = "AIzaSyByw2cQQXcWjVl2ESpiPJ32-6VLETvBOx0";
 const PROJECT_ID = "sibiya-ai";
 const FS = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 
 async function verifyUser(req) {
   const header = req.headers.authorization || "";
   const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
-  if (!token) return null;
-  try {
-    const r = await fetch(
-      `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Referer: "https://sibiya-ai.vercel.app/" },
-        body: JSON.stringify({ idToken: token }),
-      }
-    );
-    if (!r.ok) return null;
-    const data = await r.json();
-    const u = data.users && data.users[0];
-    if (!u) return null;
-    return { uid: u.localId, name: u.displayName || "", token };
-  } catch {
-    return null;
-  }
+  return verifyFirebaseToken(token);
 }
 
-// Reads a Firestore document as the signed-in user, so your Firestore rules still apply.
 async function readDoc(path, token) {
   try {
     const r = await fetch(`${FS}/${path}`, { headers: { Authorization: "Bearer " + token } });
-    if (r.status === 404) return { exists: false, fields: {} };
-    if (!r.ok) return null;
+    if (r.status === 404) return { exists: false, fields: {}, error: false };
+    if (!r.ok) throw new Error(`firestore get ${r.status}`);
     const d = await r.json();
-    return { exists: true, fields: d.fields || {} };
+    return { exists: true, fields: d.fields || {}, error: false };
   } catch {
-    return null;
+    return { exists: false, fields: {}, error: true };
   }
 }
 
@@ -62,6 +44,7 @@ export default async function handler(req, res) {
       .join(", ");
     return res.status(500).json({ error: "Calls are not set up yet. Missing in Vercel: " + missing + "." });
   }
+
   try {
     const body = req.body || {};
     const rawCode = String(body.code || "").trim();
@@ -71,15 +54,21 @@ export default async function handler(req, res) {
     const code = rawCode.toLowerCase();
     const roomName = "sibiya-" + code;
 
-    // This person's status in the group, and the group's host settings
-    const member = await readDoc(`chats/${rawCode}/members/${encodeURIComponent(user.uid)}`, user.token);
-    if (member && member.fields.removed && member.fields.removed.booleanValue === true) {
+    const memberDoc = await readDoc(`chats/${rawCode}/members/${encodeURIComponent(user.uid)}`, user.token);
+    if (memberDoc.error) {
+      return res.status(500).json({ error: "Could not verify group membership." });
+    }
+    const member = memberDoc.exists ? memberDoc.fields : null;
+    if (member && member.removed && member.removed.booleanValue === true) {
       return res.status(403).json({ error: "The host removed you from this group." });
     }
-    const muted = !!(member && member.fields.muted && member.fields.muted.booleanValue === true);
+    const muted = !!(member && member.muted && member.muted.booleanValue === true);
 
-    const meta = await readDoc(`chats/${rawCode}/info/meta`, user.token);
-    const mf = (meta && meta.fields) || {};
+    const metaDoc = await readDoc(`chats/${rawCode}/info/meta`, user.token);
+    if (metaDoc.error) {
+      return res.status(500).json({ error: "Could not verify group settings." });
+    }
+    const mf = metaDoc.exists ? (metaDoc.fields || {}) : {};
     const hostUid = (mf.hostUid && mf.hostUid.stringValue) || "";
     const coHosts = ((mf.coHosts && mf.coHosts.arrayValue && mf.coHosts.arrayValue.values) || [])
       .map(v => v.stringValue)
@@ -88,14 +77,12 @@ export default async function handler(req, res) {
     const isHost = !!hostUid && hostUid === user.uid;
     const isCoHost = coHosts.includes(user.uid);
 
-    // Locked group: only people who are already members can use the call
-    if (locked && member && !member.exists && !isHost) {
+    if (locked && !member && !isHost) {
       return res.status(403).json({ error: "This group is locked by the host." });
     }
 
     const action = String(body.action || "join");
 
-    // Host and co-host: end the call for everyone, or drop one person from it
     if (action === "end" || action === "kick") {
       if (!isHost && !isCoHost) {
         return res.status(403).json({ error: "Only the host or a co-host can do that." });
@@ -135,8 +122,6 @@ export default async function handler(req, res) {
       canPublish: !muted,
       canSubscribe: true,
     };
-    // Everyone can use mic and camera; only host and co-hosts can share their screen.
-    // (Skipped quietly on an older LiveKit SDK that has no TrackSource.)
     const TS = LK.TrackSource;
     if (TS && TS.MICROPHONE !== undefined) {
       grant.canPublishSources = [TS.MICROPHONE, TS.CAMERA];
