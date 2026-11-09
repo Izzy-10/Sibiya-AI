@@ -39,10 +39,7 @@ export default function WorldClock() {
         {CITIES.map(({ name, zone }) => (
           <article key={zone} className="min-w-0">
             <h3 className="truncate text-[11px] text-[#8A8580]">{name}</h3>
-            <time
-              className="block whitespace-nowrap font-mono text-lg tabular-nums text-[#F5F1E8]"
-              dateTime={now.toISOString()}
-            >
+            <time className="block whitespace-nowrap font-mono text-lg tabular-nums text-[#F5F1E8]">
               {new Intl.DateTimeFormat(undefined, {
                 timeZone: zone,
                 hour: "numeric",
