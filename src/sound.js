@@ -76,3 +76,27 @@ export function playChime() {
     if (navigator.vibrate) navigator.vibrate(80);
   } catch {}
 }
+
+// Per-group "Mute notifications" (kept on this device). until: -1 = always, otherwise a time in ms.
+const MUTE_KEY = "sibiya-mute:";
+
+export function getGroupMuteUntil(code) {
+  try {
+    const v = JSON.parse(localStorage.getItem(MUTE_KEY + code) || "null");
+    return v && typeof v.until === "number" ? v.until : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function isGroupMuted(code) {
+  const u = getGroupMuteUntil(code);
+  return u === -1 || u > Date.now();
+}
+
+export function setGroupMute(code, until) {
+  try {
+    if (!until) localStorage.removeItem(MUTE_KEY + code);
+    else localStorage.setItem(MUTE_KEY + code, JSON.stringify({ until }));
+  } catch {}
+}

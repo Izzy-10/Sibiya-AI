@@ -1,6 +1,65 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, Volume2, Paperclip, X } from "lucide-react";
-import { getToken } from "./firebase.js";
+import { db, getToken } from "./firebase.js";
+import { deleteDoc, doc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
+import MessageText, { speechText } from "./MessageText.jsx";
+import Menu from "./Menu.jsx";
+import WorldClock from "./WorldClock.jsx";
+
+const GREETING = { role: "assistant", content: "Sawubona. I'm Sibiya AI. What are we working on today?" };
+const ERROR_TEXT = "Something broke on my end — try again.";
+const KEEP = 40;
+
+function uidFromToken(token) {
+  try {
+    const part = String(token).split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(part)).sub || null;
+  } catch {
+    return null;
+  }
+}
+
+function loadSaved(uid) {
+  try {
+    const list = JSON.parse(localStorage.getItem("sibiya_solo:" + uid) || "null");
+    if (!Array.isArray(list) || list.length < 2) return null;
+    return list
+      .filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+      .slice(-KEEP);
+  } catch {
+    return null;
+  }
+}
+
+function toSaved(messages) {
+  return messages
+    .map(m => ({
+      role: m.role,
+      content: String(typeof m.content === "string" ? m.content : m._display || "").slice(0, 8000),
+    }))
+    .filter(m => m.content && m.content !== ERROR_TEXT)
+    .slice(-KEEP);
+}
+
+function saveChat(uid, messages) {
+  try {
+    localStorage.setItem("sibiya_solo:" + uid, JSON.stringify(toSaved(messages)));
+  } catch {}
+}
+
+function readCloud(data) {
+  if (!data || !Array.isArray(data.messages)) return null;
+  const list = data.messages
+    .filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+    .slice(-KEEP);
+  return list.length >= 2 ? list : null;
+}
+
+function clearSaved(uid) {
+  try {
+    localStorage.removeItem("sibiya_solo:" + uid);
+  } catch {}
+}
 
 function pickMaleVoice() {
   const voices = window.speechSynthesis?.getVoices() || [];
@@ -24,23 +83,103 @@ function speak(text, enabled) {
 }
 
 export default function App() {
-  const [messages, setMessages] = useState([
-    { role: "assistant", content: "Sawubona. I'm Sibiya AI. What are we working on today?" }
-  ]);
+  const [messages, setMessages] = useState([GREETING]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [voiceOn, setVoiceOn] = useState(true);
   const [pendingFile, setPendingFile] = useState(null);
+  const [uid, setUid] = useState(null);
+  const [historyReady, setHistoryReady] = useState(false);
   const scrollRef = useRef(null);
   const fileInputRef = useRef(null);
+  const dirtyRef = useRef(false);
+  const lastJsonRef = useRef("");
+  const loadingRef = useRef(false);
+  loadingRef.current = loading;
 
   useEffect(() => {
     if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = () => {};
   }, []);
 
   useEffect(() => {
+    let alive = true;
+    getToken()
+      .then(token => {
+        if (!alive) return;
+        const id = uidFromToken(token);
+        if (!id) return;
+        setUid(id);
+        const saved = loadSaved(id);
+        if (saved) setMessages(prev => (prev.length === 1 ? saved : prev));
+        setHistoryReady(true);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!uid) return;
+    let first = true;
+    const unsub = onSnapshot(
+      doc(db, "soloChats", uid),
+      snap => {
+        if (snap.metadata.hasPendingWrites) return;
+        const remote = snap.exists() ? readCloud(snap.data()) : null;
+        if (first) {
+          first = false;
+          if (!remote) return;
+        }
+        if (dirtyRef.current || loadingRef.current) return;
+        const json = JSON.stringify(remote || []);
+        if (json === lastJsonRef.current) return;
+        lastJsonRef.current = json;
+        setMessages(remote || [GREETING]);
+      },
+      () => {}
+    );
+    return unsub;
+  }, [uid]);
+
+  useEffect(() => {
+    if (!uid || !historyReady) return;
+    saveChat(uid, messages);
+    const list = toSaved(messages);
+    const json = JSON.stringify(list);
+    if (list.length < 2 || json === lastJsonRef.current) {
+      dirtyRef.current = false;
+      return;
+    }
+    dirtyRef.current = true;
+    if (loading) return;
+    const t = setTimeout(() => {
+      setDoc(doc(db, "soloChats", uid), { messages: list, updatedAt: serverTimestamp() })
+        .then(() => {
+          lastJsonRef.current = json;
+          dirtyRef.current = false;
+        })
+        .catch(() => {});
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [messages, uid, historyReady, loading]);
+
+  useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, loading]);
+
+  function newChat() {
+    if (!window.confirm("Start a new chat? This deletes the saved conversation from your account and from this device.")) return;
+    window.speechSynthesis?.cancel();
+    setMessages([GREETING]);
+    setPendingFile(null);
+    dirtyRef.current = false;
+    lastJsonRef.current = "";
+    if (uid) {
+      clearSaved(uid);
+      deleteDoc(doc(db, "soloChats", uid)).catch(() => {});
+    }
+  }
 
   function handleFileSelect(e) {
     const file = e.target.files?.[0];
@@ -70,7 +209,6 @@ export default function App() {
       : text;
 
     const displayText = pendingFile ? `📎 ${pendingFile.name}${text ? "\n" + text : ""}` : text;
-
     const newMessages = [...messages, { role: "user", content: userContent, _display: displayText }];
     setMessages(newMessages);
     setInput("");
@@ -82,7 +220,7 @@ export default function App() {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
-         body: JSON.stringify({
+        body: JSON.stringify({
           messages: newMessages.map(m => ({ role: m.role, content: m.content })),
         }),
       });
@@ -90,9 +228,9 @@ export default function App() {
       const data = await response.json();
       const reply = data.content?.find(c => c.type === "text")?.text || "...";
       setMessages(prev => [...prev, { role: "assistant", content: reply }]);
-      speak(reply, voiceOn);
-    } catch (e) {
-      setMessages(prev => [...prev, { role: "assistant", content: "Something broke on my end — try again." }]);
+      speak(speechText(reply), voiceOn);
+    } catch {
+      setMessages(prev => [...prev, { role: "assistant", content: ERROR_TEXT }]);
     } finally {
       setLoading(false);
     }
@@ -131,8 +269,6 @@ export default function App() {
               </linearGradient>
             </defs>
             <rect width="176" height="176" rx="38" fill="#141311" stroke="#C9A44C" strokeWidth="1.5" opacity="0.6" />
-
-            {/* crossed spears */}
             <g stroke="#8A8580" strokeWidth="3" opacity="0.9">
               <line x1="42" y1="140" x2="118" y2="46" />
               <line x1="126" y1="140" x2="64" y2="40" />
@@ -140,14 +276,8 @@ export default function App() {
             <path d="M118 46 L124 39 L130 46 Z" fill="#D8D2C4" />
             <path d="M64 40 L59 33 L69 33 Z" fill="#D8D2C4" />
             <path d="M118 46 L138 53 L118 58 Z" fill="#A13D2D" />
-
-            {/* shield */}
             <path
-              d="M88 50
-                 C 110 50 120 74 120 92
-                 C 120 120 105 140 88 147
-                 C 71 140 56 120 56 92
-                 C 56 74 66 50 88 50 Z"
+              d="M88 50 C 110 50 120 74 120 92 C 120 120 105 140 88 147 C 71 140 56 120 56 92 C 56 74 66 50 88 50 Z"
               fill="#EDE6D6"
               stroke="#0B0B0C"
               strokeWidth="1.5"
@@ -162,13 +292,8 @@ export default function App() {
               <rect x="80" y="112" width="16" height="5" />
               <rect x="80" y="122" width="16" height="5" />
             </g>
-
-            {/* gold S overlapping bottom-right */}
             <g transform="translate(112, 100) scale(0.22)">
-              <path
-                d="M 176 152 L 304 152 L 304 196 L 208 196 L 208 220 L 304 220 L 304 328 L 176 328 L 176 284 L 272 284 L 272 260 L 176 260 Z"
-                fill="url(#sgGold)"
-              />
+              <path d="M 176 152 L 304 152 L 304 196 L 208 196 L 208 220 L 304 220 L 304 328 L 176 328 L 176 284 L 272 284 L 272 260 L 176 260 Z" fill="url(#sgGold)" />
             </g>
           </svg>
           <div>
@@ -188,28 +313,35 @@ export default function App() {
           >
             voice {voiceOn ? "on" : "off"}
           </button>
-          <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-[#C9A44C] border border-[#C9A44C]/40 rounded-full px-2 py-1">
+          <div className="hidden sm:flex items-center gap-1 text-[10px] uppercase tracking-widest text-[#C9A44C] border border-[#C9A44C]/40 rounded-full px-2 py-1">
             <span className="w-1.5 h-1.5 rounded-full bg-[#A13D2D]" />
             online
           </div>
+          <Menu />
         </div>
       </div>
+
+      <WorldClock />
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-6 space-y-4">
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"} items-end gap-2`}>
             <div
-              className={`max-w-[80%] px-4 py-3 rounded-2xl text-[14px] leading-relaxed whitespace-pre-wrap ${
+              className={`max-w-[80%] px-4 py-3 rounded-2xl text-[14px] leading-relaxed whitespace-pre-wrap break-words ${
                 m.role === "user"
                   ? "bg-[#C9A44C] text-[#0B0B0C] rounded-br-sm"
                   : "bg-[#161514] text-[#F5F1E8] rounded-bl-sm border border-[#232019]"
               }`}
             >
-              {typeof m.content === "string" ? m.content : m._display}
+              <MessageText
+                text={typeof m.content === "string" ? m.content : m._display}
+                mine={m.role === "user"}
+                allowFiles={m.role === "assistant"}
+              />
             </div>
             {m.role === "assistant" && (
               <button
-                onClick={() => speak(m.content, true)}
+                onClick={() => speak(speechText(m.content), true)}
                 className="w-6 h-6 shrink-0 rounded-full flex items-center justify-center text-[#8A8580] hover:text-[#C9A44C] transition-colors"
                 aria-label="Play message"
               >
@@ -266,11 +398,12 @@ export default function App() {
             <Send size={14} />
           </button>
         </div>
-        <div className="text-center mt-3">
-          <a
-            href="/privacy.html"
-            className="text-[10px] text-[#5C5850] hover:text-[#C9A44C] tracking-wide transition-colors"
-          >
+        <div className="flex items-center justify-center gap-3 mt-3 text-[10px] tracking-wide">
+          <button onClick={newChat} className="text-[#8A8580] hover:text-[#C9A44C] transition-colors">
+            New chat
+          </button>
+          <span className="text-[#5C5850]">·</span>
+          <a href="/privacy.html" className="text-[#8A8580] hover:text-[#C9A44C] transition-colors">
             Privacy Policy
           </a>
         </div>
