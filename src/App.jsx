@@ -4,6 +4,7 @@ import { db, getToken } from "./firebase.js";
 import { deleteDoc, doc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
 import MessageText, { speechText } from "./MessageText.jsx";
 import Menu from "./Menu.jsx";
+import WorldClock from "./WorldClock.jsx";
 
 const GREETING = { role: "assistant", content: "Sawubona. I'm Sibiya AI. What are we working on today?" };
 const ERROR_TEXT = "Something broke on my end — try again.";
@@ -338,7 +339,11 @@ export default function App() {
             online
           </div>
                   <Menu />
-        </div>
+        </div> 
+
+      <WorldClock />
+
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-6 space-y-4">
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-6 space-y-4">
