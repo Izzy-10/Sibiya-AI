@@ -15,7 +15,7 @@ export default function Root() {
   );
 
   useEffect(() => {
-      return watchAuth(setUser, e =>
+    return watchAuth(setUser, e =>
       setAuthError(
         "Couldn't connect to Sibiya chat (" +
           (e?.code || "unknown error") +
@@ -37,7 +37,7 @@ export default function Root() {
   }
 
   if (view === "solo") {
-       if (user && !user.isAnonymous) return <App onHome={() => window.history.back()} />;
+    if (user && !user.isAnonymous) return <App onHome={() => window.history.back()} />;
     return <SignIn onBack={() => window.history.back()} />;
   }
 
