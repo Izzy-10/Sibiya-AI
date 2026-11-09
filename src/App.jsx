@@ -8,9 +8,8 @@ import WorldClock from "./WorldClock.jsx";
 
 const GREETING = { role: "assistant", content: "Sawubona. I'm Sibiya AI. What are we working on today?" };
 const ERROR_TEXT = "Something broke on my end — try again.";
-const KEEP = 40; // how many messages are kept (in your account and on this device)
+const KEEP = 40;
 
-// The signed-in person's id, read from their sign-in token (used to keep each account's chat separate)
 function uidFromToken(token) {
   try {
     const part = String(token).split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
@@ -32,7 +31,6 @@ function loadSaved(uid) {
   }
 }
 
-// Text only (a PDF attachment is kept as its file name, not the file itself)
 function toSaved(messages) {
   return messages
     .map(m => ({
@@ -43,14 +41,12 @@ function toSaved(messages) {
     .slice(-KEEP);
 }
 
-// Copy kept on this device, so the chat also shows up instantly and works offline
 function saveChat(uid, messages) {
   try {
     localStorage.setItem("sibiya_solo:" + uid, JSON.stringify(toSaved(messages)));
   } catch {}
 }
 
-// The chat stored in the person's account, if it is valid
 function readCloud(data) {
   if (!data || !Array.isArray(data.messages)) return null;
   const list = data.messages
@@ -96,8 +92,8 @@ export default function App() {
   const [historyReady, setHistoryReady] = useState(false);
   const scrollRef = useRef(null);
   const fileInputRef = useRef(null);
-  const dirtyRef = useRef(false); // true while this device has changes not yet saved to the account
-  const lastJsonRef = useRef(""); // the version of the chat known to be in the account
+  const dirtyRef = useRef(false);
+  const lastJsonRef = useRef("");
   const loadingRef = useRef(false);
   loadingRef.current = loading;
 
@@ -105,7 +101,6 @@ export default function App() {
     if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = () => {};
   }, []);
 
-  // Bring back this account's last chat after a refresh
   useEffect(() => {
     let alive = true;
     getToken()
@@ -124,20 +119,19 @@ export default function App() {
     };
   }, []);
 
-  // Follow the chat stored in the account: other devices' changes show up here
   useEffect(() => {
     if (!uid) return;
     let first = true;
     const unsub = onSnapshot(
       doc(db, "soloChats", uid),
       snap => {
-        if (snap.metadata.hasPendingWrites) return; // our own write on its way
+        if (snap.metadata.hasPendingWrites) return;
         const remote = snap.exists() ? readCloud(snap.data()) : null;
         if (first) {
           first = false;
-          if (!remote) return; // nothing in the account yet: this device's copy gets uploaded
+          if (!remote) return;
         }
-        if (dirtyRef.current || loadingRef.current) return; // do not overwrite what is being typed or answered
+        if (dirtyRef.current || loadingRef.current) return;
         const json = JSON.stringify(remote || []);
         if (json === lastJsonRef.current) return;
         lastJsonRef.current = json;
@@ -148,7 +142,6 @@ export default function App() {
     return unsub;
   }, [uid]);
 
-  // Keep the chat saved: on this device straight away, and in the account a moment later
   useEffect(() => {
     if (!uid || !historyReady) return;
     saveChat(uid, messages);
@@ -159,14 +152,14 @@ export default function App() {
       return;
     }
     dirtyRef.current = true;
-    if (loading) return; // wait for the answer, then save both together
+    if (loading) return;
     const t = setTimeout(() => {
       setDoc(doc(db, "soloChats", uid), { messages: list, updatedAt: serverTimestamp() })
         .then(() => {
           lastJsonRef.current = json;
           dirtyRef.current = false;
         })
-        .catch(() => {}); // offline: the copy on this device is still kept
+        .catch(() => {});
     }, 1200);
     return () => clearTimeout(t);
   }, [messages, uid, historyReady, loading]);
@@ -216,7 +209,6 @@ export default function App() {
       : text;
 
     const displayText = pendingFile ? `📎 ${pendingFile.name}${text ? "\n" + text : ""}` : text;
-
     const newMessages = [...messages, { role: "user", content: userContent, _display: displayText }];
     setMessages(newMessages);
     setInput("");
@@ -228,7 +220,7 @@ export default function App() {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
-         body: JSON.stringify({
+        body: JSON.stringify({
           messages: newMessages.map(m => ({ role: m.role, content: m.content })),
         }),
       });
@@ -237,7 +229,7 @@ export default function App() {
       const reply = data.content?.find(c => c.type === "text")?.text || "...";
       setMessages(prev => [...prev, { role: "assistant", content: reply }]);
       speak(speechText(reply), voiceOn);
-    } catch (e) {
+    } catch {
       setMessages(prev => [...prev, { role: "assistant", content: ERROR_TEXT }]);
     } finally {
       setLoading(false);
@@ -277,8 +269,6 @@ export default function App() {
               </linearGradient>
             </defs>
             <rect width="176" height="176" rx="38" fill="#141311" stroke="#C9A44C" strokeWidth="1.5" opacity="0.6" />
-
-            {/* crossed spears */}
             <g stroke="#8A8580" strokeWidth="3" opacity="0.9">
               <line x1="42" y1="140" x2="118" y2="46" />
               <line x1="126" y1="140" x2="64" y2="40" />
@@ -286,14 +276,8 @@ export default function App() {
             <path d="M118 46 L124 39 L130 46 Z" fill="#D8D2C4" />
             <path d="M64 40 L59 33 L69 33 Z" fill="#D8D2C4" />
             <path d="M118 46 L138 53 L118 58 Z" fill="#A13D2D" />
-
-            {/* shield */}
             <path
-              d="M88 50
-                 C 110 50 120 74 120 92
-                 C 120 120 105 140 88 147
-                 C 71 140 56 120 56 92
-                 C 56 74 66 50 88 50 Z"
+              d="M88 50 C 110 50 120 74 120 92 C 120 120 105 140 88 147 C 71 140 56 120 56 92 C 56 74 66 50 88 50 Z"
               fill="#EDE6D6"
               stroke="#0B0B0C"
               strokeWidth="1.5"
@@ -308,13 +292,8 @@ export default function App() {
               <rect x="80" y="112" width="16" height="5" />
               <rect x="80" y="122" width="16" height="5" />
             </g>
-
-            {/* gold S overlapping bottom-right */}
             <g transform="translate(112, 100) scale(0.22)">
-              <path
-                d="M 176 152 L 304 152 L 304 196 L 208 196 L 208 220 L 304 220 L 304 328 L 176 328 L 176 284 L 272 284 L 272 260 L 176 260 Z"
-                fill="url(#sgGold)"
-              />
+              <path d="M 176 152 L 304 152 L 304 196 L 208 196 L 208 220 L 304 220 L 304 328 L 176 328 L 176 284 L 272 284 L 272 260 L 176 260 Z" fill="url(#sgGold)" />
             </g>
           </svg>
           <div>
@@ -338,13 +317,11 @@ export default function App() {
             <span className="w-1.5 h-1.5 rounded-full bg-[#A13D2D]" />
             online
           </div>
-                  <Menu />
-        </div> 
+          <Menu />
+        </div>
+      </div>
 
       <WorldClock />
-
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-6 space-y-4">
-      </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-6 space-y-4">
         {messages.map((m, i) => (
