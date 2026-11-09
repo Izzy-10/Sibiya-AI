@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="How visitor AI access works in Sibiya AI." />
+  <title>Visitor AI Access Policy — Sibiya AI</title>
+  <link rel="stylesheet" href="/theme.css" />
+  <style>
+    body { margin: 0; background: #0B0B0C; color: #F5F1E8; font: 16px/1.65 system-ui, -apple-system, 'Segoe UI', sans-serif; }
+    .wrap { max-width: 700px; margin: 0 auto; padding: 36px 20px 72px; }
+    .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .brand { color: #F5F1E8; text-decoration: none; font-weight: 700; letter-spacing: 2px; }
+    .home, a { color: #C9A44C; }
+    .home { text-decoration: none; border: 1px solid rgba(201,164,76,.5); border-radius: 999px; padding: 7px 14px; font-size: 13px; }
+    .tagline { color: #8A8580; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; margin: 10px 0 30px; }
+    h1 { font-size: 25px; margin: 28px 0 8px; }
+    h2 { color: #C9A44C; font-size: 14px; letter-spacing: 1px; margin: 30px 0 8px; }
+    p, li { color: #D8D2C4; font-size: 14px; }
+    ul { padding-left: 22px; }
+    li { margin: 7px 0; }
+    .notice { border-left: 3px solid #A13D2D; padding: 10px 14px; background: #161514; }
+    footer { border-top: 1px solid #232019; margin-top: 40px; padding-top: 18px; font-size: 13px; }
+    footer a { margin-right: 16px; }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="top"><a class="brand" href="/landing.html">SIBIYA <span style="color:#C9A44C">AI</span></a><a class="home" href="/">Open app</a></div>
+    <div class="tagline">Umoya Wesizwe SakwaZulu</div>
+    <h1>Visitor AI Access Policy</h1>
+    <p class="notice"><strong>Product policy.</strong> Access is enforced by the server, not by this page or the Terms and Conditions. The application behavior and server configuration must remain consistent with this policy.</p>
+
+    <h2>Who can use public AI features</h2>
+    <p>Sibiya AI's public-facing AI features are intended for website visitors and regular users. Solo AI chat requires Google sign-in. Group AI is available to eligible group participants when the group host has enabled it; group participation may use guest/anonymous sign-in.</p>
+
+    <h2>Founder/admin exclusion</h2>
+    <p>The founder/admin account identified by the verified email configured as <code>OWNER_EMAIL</code> is denied access to public AI requests by a server-side check. The check covers requests sent to the public chat API, including solo and group AI requests. Changing or hiding the interface does not replace this server enforcement.</p>
+    <p>Keep <code>OWNER_EMAIL</code> configured in the deployment's secure environment settings. Do not put secret values in client code or share them in chat. If the setting is empty or incorrect, the founder/admin exclusion may not identify the intended account; verify the deployment configuration and test it after deployment.</p>
+
+    <h2>AI processing and data</h2>
+    <p>Messages and supported attachments sent to an AI feature are processed to generate a response. In group chats, context from recent group messages may be sent when the AI is called. The Privacy Policy describes the product's data handling and service providers; review it against actual retention, logging, deletion, and provider settings before publication.</p>
+
+    <h2>Limits and responsible use</h2>
+    <p>AI access may be rate-limited or temporarily unavailable. Responses may be wrong, so verify consequential information. Do not submit passwords, payment details, identity numbers, or other sensitive information. See the <a href="/terms-and-conditions.html">Terms and Conditions</a> and <a href="/privacy.html">Privacy Policy</a>.</p>
+
+    <h2>Reporting an access issue</h2>
+    <p>If a regular visitor is incorrectly blocked, or the founder/admin account can still obtain a public AI response, report the issue at <a href="mailto:ssibiya026m@ai.wethinkcode.co.za">ssibiya026m@ai.wethinkcode.co.za</a>. Check the verified Google account and deployment's <code>OWNER_EMAIL</code> setting without disclosing credentials.</p>
+    <footer><a href="/landing.html">Home</a><a href="/privacy.html">Privacy</a><a href="/terms-and-conditions.html">Terms</a><div style="color:#8A8580;margin-top:12px">Review against production configuration before publication · November 2026</div></footer>
+  </main>
+</body>
+</html>
