@@ -60,7 +60,13 @@ const anthropic = {
   },
 };
 
+// --- SECURE: No hardcoded keys ---
+const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY;
 const OWNER_EMAIL = (process.env.OWNER_EMAIL || "").trim().toLowerCase();
+
+if (!FIREBASE_API_KEY) {
+  console.warn("WARNING: FIREBASE_API_KEY env var not set");
+}
 
 const hits = new Map();
 function tooMany(key, limit) {
@@ -97,6 +103,7 @@ function cleanMessages(list, keep) {
     .slice(keep);
 }
 
+const OWNER_PROMPT = `You are SIBIYA AI - Umoya WeSizwe, built by Sizwe Sicelimpilo Sibiya from Jozini, KZN. WeThinkCode_ Durban, DevMzansi founder.
 // --- REVISED CLEAR PROMPTS - ALL PURPOSE ---
 const OWNER_PROMPT = `You are SIBIYA AI - Umoya WeSizwe, built by Sizwe Sicelimpilo Sibiya, Jozini KZN, WeThinkCode_ Durban.
 
@@ -218,6 +225,25 @@ Today's date is provided - use it for any question about the date or time. You c
 async function verifyUser(req) {
   const header = req.headers.authorization || "";
   const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+  if (!token) return null;
+  if (!FIREBASE_API_KEY) return null;
+  try {
+    const r = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_API_KEY}`,
+      { method: "POST", headers: { "Content-Type": "application/json", Referer: "https://sibiya-ai.vercel.app/" }, body: JSON.stringify({ idToken: token }) }
+    );
+    if (!r.ok) return null;
+    const data = await r.json();
+    const u = data.users && data.users[0];
+    if (!u) return null;
+    return {
+      uid: u.localId,
+      email: (u.email || "").toLowerCase(),
+      verified: u.emailVerified === true,
+      name: u.displayName || "",
+      google: (u.providerUserInfo || []).some(p => p.providerId === "google.com"),
+    };
+  } catch { return null; }
   return verifyFirebaseToken(token);
 }
 
