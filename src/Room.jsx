@@ -62,6 +62,7 @@ import { getGroupMuteUntil, getSoundOn, isGroupMuted, playChime, setGroupMute, s
 import Linkify from "./Linkify.jsx";
 import MessageText, { previewText } from "./MessageText.jsx";
 import Menu from "./Menu.jsx";
+import { useIsOwner } from "./owner.js";
 
 const MENTION = /@sibiya\b/i;
 const ONLINE_WINDOW_MS = 75000;
@@ -142,6 +143,8 @@ export default function Room({ user, code, name, title, onBack }) {
   const inputRef = useRef(null);
   const [, setTick] = useState(0);
   const scrollRef = useRef(null);
+  const nearBottomRef = useRef(true); // is the person reading the latest messages?
+  const prevCountRef = useRef(null);
   const messagesRef = useRef([]);
   const fileInputRef = useRef(null);
   const kickedRef = useRef(false);
@@ -155,9 +158,10 @@ export default function Room({ user, code, name, title, onBack }) {
     }
   }
 
+  const isOwner = useIsOwner(); // master key: no group rule applies to the owner
   const hostUid = meta?.hostUid || "";
   const coHosts = Array.isArray(meta?.coHosts) ? meta.coHosts : [];
-  const isHost = !!hostUid && hostUid === user.uid;
+  const isHost = (!!hostUid && hostUid === user.uid) || isOwner;
   const isCoHost = coHosts.includes(user.uid);
   const isStaff = isHost || isCoHost;
   const aiOn = meta?.aiEnabled !== false;
@@ -184,8 +188,8 @@ export default function Room({ user, code, name, title, onBack }) {
   const locked = meta?.locked === true;
   const pinned = meta?.pinned?.text ? meta.pinned : null;
   const me = members.find(m => m.id === user.uid);
-  const iAmRemoved = !!me?.removed;
-  const iAmMuted = !!me?.muted;
+  const iAmRemoved = !isOwner && !!me?.removed;
+  const iAmMuted = !isOwner && !!me?.muted;
   const activeMembers = members.filter(m => !m.removed);
   const removedMembers = members.filter(m => m.removed);
   const onlineCount = activeMembers.filter(isOnline).length;
@@ -199,7 +203,9 @@ export default function Room({ user, code, name, title, onBack }) {
 
   // Who this person is allowed to mute or remove
   function canManage(m) {
-    if (m.id === user.uid || m.id === hostUid) return false;
+    if (m.id === user.uid) return false;
+    if (isOwner) return true;
+    if (m.id === hostUid) return false;
     if (isHost) return true;
     return isCoHost && !coHosts.includes(m.id);
   }
@@ -343,8 +349,34 @@ export default function Room({ user, code, name, title, onBack }) {
     return mark;
   }, [code, messages.length]);
 
+  function onChatScroll() {
+    const el = scrollRef.current;
+    if (el) nearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 140;
+  }
+
+  // Scroll to new messages, but never pull the person away while they are scrolling up to read
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+    const el = scrollRef.current;
+    if (!el) return;
+    const count = messages.length;
+    const prev = prevCountRef.current;
+    prevCountRef.current = count;
+    const bottom = smooth => el.scrollTo({ top: el.scrollHeight, behavior: smooth ? "smooth" : "auto" });
+    if (prev === null || count - prev > 3) {
+      bottom(false); // opening the group, or a big load
+      return;
+    }
+    const last = messages[count - 1];
+    const grew = count > prev;
+    if (grew && last && last.uid !== user.uid) {
+      const node = document.getElementById("msg-" + last.id);
+      if (node && node.offsetHeight > el.clientHeight * 0.8) {
+        // a long message starts at its top, so it can be read from the beginning
+        el.scrollTo({ top: el.scrollTop + node.getBoundingClientRect().top - el.getBoundingClientRect().top - 8, behavior: "auto" });
+        return;
+      }
+    }
+    if ((grew && last && last.uid === user.uid) || nearBottomRef.current) bottom(true);
   }, [messages, aiBusy]);
 
   async function askAI(asker) {
@@ -431,7 +463,7 @@ export default function Room({ user, code, name, title, onBack }) {
     }
     // @sibiya, or a reply to one of the AI's own messages, calls the AI
     if ((MENTION.test(text) || reply?.uid === "sibiya-ai") && !aiBusy) {
-      if (aiOn) askAI(name);
+      if (aiOn || isOwner) askAI(name);
       else setError("The host turned Sibiya AI off in this group.");
     }
   }
@@ -865,7 +897,7 @@ export default function Room({ user, code, name, title, onBack }) {
         </div>
       )}
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-5 space-y-3">
+      <div ref={scrollRef} onScroll={onChatScroll} className="flex-1 overflow-y-auto px-4 py-5 space-y-3">
         {visibleMessages.length === 0 && !error && (
           <div className="text-center text-[13px] text-[#8A8580] pt-10 px-6">
             Say sawubona. Tap Invite to bring people in, and type @sibiya to ask the AI.

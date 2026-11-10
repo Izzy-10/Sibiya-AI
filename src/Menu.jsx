@@ -1,16 +1,28 @@
-import { useState } from "react";
-import { Menu as MenuIcon, X, Feather, Hourglass, ScrollText, HelpCircle, Wallet, Sparkles, Home, Info, LifeBuoy, Shield, Share2, FileText, Bot } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Menu as MenuIcon, X, Feather, Hourglass, ScrollText, HelpCircle, Wallet, Sparkles, Home, Info, LifeBuoy, Shield, Share2 } from "lucide-react";
 import Izibongo from "./Izibongo.jsx";
 import Capsule from "./Capsule.jsx";
 import CatchUp from "./CatchUp.jsx";
 import Quiz from "./Quiz.jsx";
 import Stokvel from "./Stokvel.jsx";
 import Persona, { personaLabel } from "./Persona.jsx";
+import { callTool } from "./toolApi.js";
 
 // The ☰ menu. Inside a group it also shows the group tools (pass the `room` details).
 export default function Menu({ room }) {
   const [open, setOpen] = useState(false);
   const [tool, setTool] = useState(null);
+  const [owner, setOwner] = useState(false);
+  const asked = useRef(false);
+
+  // ask the server once whether the master key (the owner's Google account) is active
+  useEffect(() => {
+    if (!open || asked.current) return;
+    asked.current = true;
+    callTool({ tool: "whoami" })
+      .then(d => setOwner(!!d.owner))
+      .catch(() => {});
+  }, [open]);
 
   function go(t) {
     setOpen(false);
@@ -44,8 +56,6 @@ export default function Menu({ room }) {
     { href: "/about.html", icon: Info, label: "About" },
     { href: "/support.html", icon: LifeBuoy, label: "Support" },
     { href: "/privacy.html", icon: Shield, label: "Privacy" },
-    { href: "/terms-and-conditions.html", icon: FileText, label: "Terms" },
-    { href: "/visitor-ai-policy.html", icon: Bot, label: "Visitor AI access" },
   ];
 
   const Item = ({ it }) => (
@@ -83,6 +93,12 @@ export default function Menu({ room }) {
                 <X size={18} />
               </button>
             </div>
+
+            {owner && (
+              <div className="mb-4 rounded-xl border border-[#C9A44C]/60 bg-[#C9A44C]/10 px-3 py-2 text-[12px] text-[#C9A44C]">
+                🔑 Owner mode: your master key is active
+              </div>
+            )}
 
             {group.length > 0 && (
               <>

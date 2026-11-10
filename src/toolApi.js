@@ -1,57 +1,29 @@
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db, getToken } from "./firebase.js";
 
-const OWNER_EMAIL = "sizwescelimpilo5@gmail.com";
-
-function decodeToken(token) {
-  try {
-    const p = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-    return JSON.parse(atob(p));
-  } catch {
-    return {};
-  }
-}
-
-function getTokenClaims(token) {
-  try {
-    return decodeToken(token);
-  } catch {
-    return {};
-  }
-}
-
+// Calls the server for AI jobs: izibongo, catch me up, quiz questions, stokvel reminders
 export async function callTool(body) {
   const token = await getToken();
-  const headers = {
-    "Content-Type": "application/json",
-    Authorization: "Bearer " + token,
-  };
-
   const res = await fetch("/api/tool", {
     method: "POST",
-    headers,
-    body: JSON.stringify(body || {}),
+    headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+    body: JSON.stringify(body),
   });
-
-  let data = null;
-  try {
-    data = await res.json();
-  } catch {
-    data = null;
-  }
-
+  const data = await res.json().catch(() => null);
   if (!res.ok) {
-    const msg = data && data.error ? data.error : "Server error " + res.status;
-    throw new Error(msg);
+    if (data && data.error) throw new Error(data.error);
+    // the server did not answer with a normal message: say what happened
+    if (res.status === 404) throw new Error("This tool isn't on the server yet (error 404). Check that api/tool.js is in the api folder.");
+    if (res.status === 504 || res.status === 408) throw new Error("That took too long (error " + res.status + "). Try again in a moment.");
+    throw new Error("The server had a problem (error " + res.status + "). Try again.");
   }
-
   return data || {};
 }
 
 export function uidFromToken(token) {
   try {
-    const d = getTokenClaims(token);
-    return d.sub || d.user_id || null;
+    const part = String(token).split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(part)).sub || null;
   } catch {
     return null;
   }
@@ -59,8 +31,7 @@ export function uidFromToken(token) {
 
 export async function currentUid() {
   try {
-    const token = await getToken();
-    return uidFromToken(token);
+    return uidFromToken(await getToken());
   } catch {
     return null;
   }
@@ -74,16 +45,17 @@ export function savedName() {
   }
 }
 
+// Groups this device has opened (the same list the lobby shows)
 export function savedGroups() {
   try {
-    const parsed = JSON.parse(localStorage.getItem("sibiya_groups") || "[]");
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(g => g && typeof g.code === "string");
+    const a = JSON.parse(localStorage.getItem("sibiya_groups") || "[]");
+    return Array.isArray(a) ? a.filter(g => g && typeof g.code === "string") : [];
   } catch {
     return [];
   }
 }
 
+// A small grey line in the group chat, like "Mudesi started a quiz"
 export async function postNotice(code, uid, name, text) {
   await addDoc(collection(db, "chats", code, "messages"), {
     text: String(text).slice(0, 500),
@@ -100,14 +72,5 @@ export function copyToClipboard(text) {
     return navigator.clipboard.writeText(text);
   } catch {
     return Promise.reject();
-  }
-}
-
-export function isOwnerToken(token) {
-  try {
-    const email = (getTokenClaims(token).email || "").toLowerCase();
-    return email === OWNER_EMAIL.toLowerCase();
-  } catch {
-    return false;
   }
 }
