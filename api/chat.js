@@ -57,7 +57,7 @@ export default async function handler(req, res) {
     const finalMessages = messages.length ? messages : [{ role: "user", content: String(userText || "Hello").slice(0, 12000) }];
 
     const response = await client.messages.create({
-      model: "claude-3-haiku-20240307",
+      model: "claude-3-5-haiku-latest",
       max_tokens: 1200,
       system: "You are Sibiya AI. Answer clearly and naturally in plain text. Keep replies useful and concise.",
       messages: finalMessages.map(m => ({ role: m.role, content: m.content })),
