@@ -1,7 +1,6 @@
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db, getToken } from "./firebase.js";
 
-// Calls the server for AI jobs: izibongo, catch me up, quiz questions, stokvel reminders
 export async function callTool(body) {
   const token = await getToken();
   const res = await fetch("/api/tool", {
@@ -12,12 +11,16 @@ export async function callTool(body) {
   const data = await res.json().catch(() => null);
   if (!res.ok) {
     if (data && data.error) throw new Error(data.error);
-    // the server did not answer with a normal message: say what happened
     if (res.status === 404) throw new Error("This tool isn't on the server yet (error 404). Check that api/tool.js is in the api folder.");
     if (res.status === 504 || res.status === 408) throw new Error("That took too long (error " + res.status + "). Try again in a moment.");
     throw new Error("The server had a problem (error " + res.status + "). Try again.");
   }
   return data || {};
+}
+
+// Helper for normal chat - use this when user types a question
+export async function askAI(message) {
+  return callTool({ tool: "chat", message, prompt: message });
 }
 
 export function uidFromToken(token) {
@@ -45,7 +48,6 @@ export function savedName() {
   }
 }
 
-// Groups this device has opened (the same list the lobby shows)
 export function savedGroups() {
   try {
     const a = JSON.parse(localStorage.getItem("sibiya_groups") || "[]");
@@ -55,7 +57,6 @@ export function savedGroups() {
   }
 }
 
-// A small grey line in the group chat, like "Mudesi started a quiz"
 export async function postNotice(code, uid, name, text) {
   await addDoc(collection(db, "chats", code, "messages"), {
     text: String(text).slice(0, 500),
