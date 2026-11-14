@@ -41,3 +41,4 @@ export function setTheme(key) {
 
 // apply as soon as this file loads, so the page does not flash the wrong colours
 applyTheme(getTheme());
+
