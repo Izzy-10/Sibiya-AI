@@ -4,6 +4,8 @@ import { db, getToken } from "./firebase.js";
 import { deleteDoc, doc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
 import MessageText, { speechText } from "./MessageText.jsx";
 import Menu from "./Menu.jsx";
+import { THEMES, getTheme, setTheme, applyTheme } from "./theme.js";
+import "./theme.css";
 
 const GREETING = { role: "assistant", content: "Sawubona. I'm Sibiya AI. What are we working on today?" };
 const ERROR_TEXT = "Something broke on my end — try again.";
@@ -15,20 +17,12 @@ function uidFromToken(token) {
     return JSON.parse(atob(part)).sub || null;
   } catch { return null; }
 }
-
 function toApiMessages(messages) {
-  return messages
-    .filter(m => m && (m.role === "user" || m.role === "assistant"))
-    .filter(m => !(m.role === "assistant" && m.content === GREETING.content))
-    .map(m => ({ role: m.role, content: String(typeof m.content === "string" ? m.content : m._display || "").slice(0, 8000) }))
-    .filter(m => m.content)
-    .slice(-KEEP);
+  return messages.filter(m => m && (m.role === "user" || m.role === "assistant")).filter(m => !(m.role === "assistant" && m.content === GREETING.content)).map(m => ({ role: m.role, content: String(typeof m.content === "string" ? m.content : m._display || "").slice(0, 8000) })).filter(m => m.content).slice(-KEEP);
 }
-
 function toSaved(messages) {
   return messages.map(m => ({ role: m.role, content: String(typeof m.content === "string" ? m.content : m._display || "").slice(0, 8000) })).filter(m => m.content && m.content !== ERROR_TEXT).slice(-KEEP);
 }
-
 function loadSaved(uid) {
   try {
     const list = JSON.parse(localStorage.getItem("sibiya_solo:" + uid) || "null");
@@ -36,18 +30,15 @@ function loadSaved(uid) {
     return list.filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string").slice(-KEEP);
   } catch { return null; }
 }
-
 function readCloud(data) {
   if (!data || !Array.isArray(data.messages)) return null;
   const list = data.messages.filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string").slice(-KEEP);
   return list.length >= 2 ? list : null;
 }
-
 function pickVoice() {
   const voices = window.speechSynthesis?.getVoices() || [];
   return voices.find(v => ["daniel","fred","alex","arthur"].some(n => v.name.toLowerCase().includes(n))) || voices.find(v => v.lang?.startsWith("en")) || voices[0];
 }
-
 function speak(text, enabled) {
   if (!enabled || !window.speechSynthesis) return;
   window.speechSynthesis.cancel();
@@ -66,12 +57,16 @@ export default function App() {
   const [pendingFile, setPendingFile] = useState(null);
   const [uid, setUid] = useState(null);
   const [historyReady, setHistoryReady] = useState(false);
+  const [theme, setThemeState] = useState(getTheme());
+  const [showThemes, setShowThemes] = useState(false);
   const scrollRef = useRef(null);
   const fileInputRef = useRef(null);
   const dirtyRef = useRef(false);
   const lastJsonRef = useRef("");
   const loadingRef = useRef(false);
   loadingRef.current = loading;
+
+  useEffect(() => { applyTheme(theme); }, [theme]);
 
   useEffect(() => {
     let alive = true;
@@ -122,6 +117,12 @@ export default function App() {
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [messages, loading]);
 
+  function changeTheme(key) {
+    setTheme(key);
+    setThemeState(key);
+    setShowThemes(false);
+  }
+
   function newChat() {
     if (!window.confirm("Start a new chat? This deletes the saved conversation.")) return;
     window.speechSynthesis?.cancel();
@@ -162,41 +163,60 @@ export default function App() {
   function handleKey(e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }
 
   return (
-    <div className="w-full h-[100dvh] flex flex-col bg-[#0B0B0C] text-[#F5F1E8]" style={{ fontFamily: "system-ui, sans-serif" }}>
-      <style>{`::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:#2A2823;border-radius:3px}@keyframes pulse-red{0%,100%{opacity:.35}50%{opacity:1}}.dot{animation:pulse-red 1.4s infinite}.dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}`}</style>
-      <div className="flex items-center justify-between px-5 py-4 border-b border-[#1E1D1A]">
+    <div className="w-full h-[100dvh] flex flex-col" style={{ background: "var(--bg)", color: "var(--text)", fontFamily: "system-ui, sans-serif" }}>
+      <style>{`::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}@keyframes pulse-red{0%,100%{opacity:.35}50%{opacity:1}}.dot{animation:pulse-red 1.4s infinite}.dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}`}</style>
+
+      <div className="flex items-center justify-between px-5 py-4 border-b relative" style={{ borderColor: "var(--border)" }}>
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#141311] border border-[#C9A44C]/60 flex items-center justify-center text-[#C9A44C] font-bold text-lg">S</div>
-          <div><div className="font-bold text-[15px] tracking-tight">SIBIYA AI</div><div className="text-[10px] text-[#8A8580] tracking-wide">Umoya Wesizwe SakwaZulu</div></div>
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg" style={{ background: "var(--panel)", color: "var(--accent)", border: "1px solid var(--border)" }}>S</div>
+          <div><div className="font-bold text-[15px] tracking-tight">SIBIYA AI</div><div className="text-[10px] tracking-wide" style={{ color: "var(--muted)" }}>Umoya Wesizwe SakwaZulu</div></div>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => { if (voiceOn) window.speechSynthesis?.cancel(); setVoiceOn(v => !v); }} className={`text-[10px] uppercase tracking-widest rounded-full px-2 py-1 border ${voiceOn ? "text-[#C9A44C] border-[#C9A44C]/40" : "text-[#5C5850] border-[#2A2823]"}`}>voice {voiceOn ? "on" : "off"}</button>
+          <button onClick={() => setShowThemes(v => !v)} title="Change theme" className="w-8 h-8 rounded-full border flex items-center justify-center" style={{ borderColor: "var(--border)", background: "var(--panel)" }}>
+            <span className="w-4 h-4 rounded-full inline-block" style={{ background: THEMES.find(t => t.key === theme)?.dot }} />
+          </button>
+          <button onClick={() => { if (voiceOn) window.speechSynthesis?.cancel(); setVoiceOn(v => !v); }} className="text-[10px] uppercase tracking-widest rounded-full px-2 py-1 border" style={{ color: voiceOn ? "var(--accent)" : "var(--muted)", borderColor: "var(--border)" }}>voice {voiceOn ? "on" : "off"}</button>
           <Menu />
         </div>
+
+        {showThemes && (
+          <div className="absolute top-[70px] right-4 z-50 rounded-2xl p-3 shadow-xl w-[220px]" style={{ background: "var(--panel)", border: "1px solid var(--border)" }}>
+            <div className="text-[12px] font-bold mb-2" style={{ color: "var(--muted)" }}>CHOOSE THEME</div>
+            {THEMES.map(t => (
+              <button key={t.key} onClick={() => changeTheme(t.key)} className="w-full flex items-center gap-3 px-2 py-2 rounded-xl text-left" style={{ background: theme === t.key ? "var(--bg)" : "transparent" }}>
+                <span className="w-6 h-6 rounded-full shrink-0" style={{ background: t.dot }} />
+                <span className="flex-1 text-[14px] font-medium">{t.label}</span>
+                {theme === t.key && <span style={{ color: "var(--accent)" }}>✓</span>}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
+
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-6 space-y-4">
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"} items-end gap-2`}>
-            <div className={`max-w-[80%] px-4 py-3 rounded-2xl text-[14px] leading-relaxed whitespace-pre-wrap break-words ${m.role === "user" ? "bg-[#C9A44C] text-[#0B0B0C] rounded-br-sm" : "bg-[#161514] text-[#F5F1E8] rounded-bl-sm border border-[#232019]"}`}>
+            <div className="max-w-[80%] px-4 py-3 rounded-2xl text-[14px] leading-relaxed whitespace-pre-wrap break-words" style={m.role === "user" ? { background: "var(--bubble-user)", color: "var(--bubble-user-text)", borderBottomRightRadius: 4 } : { background: "var(--bubble-ai)", color: "var(--text)", border: "1px solid var(--border)", borderBottomLeftRadius: 4 }}>
               <MessageText text={typeof m.content === "string" ? m.content : m._display} mine={m.role === "user"} allowFiles={m.role === "assistant"} />
             </div>
-            {m.role === "assistant" && <button onClick={() => speak(speechText(m.content), true)} className="w-6 h-6 shrink-0 rounded-full flex items-center justify-center text-[#8A8580] hover:text-[#C9A44C]"><Volume2 size={14} /></button>}
+            {m.role === "assistant" && <button onClick={() => speak(speechText(m.content), true)} className="w-6 h-6 shrink-0 rounded-full flex items-center justify-center" style={{ color: "var(--muted)" }}><Volume2 size={14} /></button>}
           </div>
         ))}
-        {loading && <div className="flex justify-start"><div className="bg-[#161514] border border-[#232019] rounded-2xl rounded-bl-sm px-4 py-3 flex gap-1"><span className="dot w-1.5 h-1.5 rounded-full bg-[#A13D2D]" /><span className="dot w-1.5 h-1.5 rounded-full bg-[#A13D2D]" /><span className="dot w-1.5 h-1.5 rounded-full bg-[#A13D2D]" /></div></div>}
+        {loading && <div className="flex justify-start"><div className="rounded-2xl px-4 py-3 flex gap-1" style={{ background: "var(--panel)", border: "1px solid var(--border)" }}><span className="dot w-1.5 h-1.5 rounded-full" style={{ background: "var(--dot)" }} /><span className="dot w-1.5 h-1.5 rounded-full" style={{ background: "var(--dot)" }} /><span className="dot w-1.5 h-1.5 rounded-full" style={{ background: "var(--dot)" }} /></div></div>}
       </div>
-      <div className="px-5 py-4 border-t border-[#1E1D1A]" style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}>
-        {pendingFile && <div className="flex items-center gap-2 mb-2 text-[12px] text-[#C9A44C] bg-[#161514] border border-[#232019] rounded-full px-3 py-1.5 w-fit"><span>📎 {pendingFile.name}</span><button onClick={() => setPendingFile(null)}><X size={12} /></button></div>}
-        <div className="flex items-end gap-2 bg-[#161514] border border-[#232019] rounded-2xl px-4 py-2">
+
+      <div className="px-5 py-4 border-t" style={{ borderColor: "var(--border)", paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}>
+        {pendingFile && <div className="flex items-center gap-2 mb-2 text-[12px] rounded-full px-3 py-1.5 w-fit" style={{ color: "var(--accent)", background: "var(--panel)", border: "1px solid var(--border)" }}><span>📎 {pendingFile.name}</span><button onClick={() => setPendingFile(null)}><X size={12} /></button></div>}
+        <div className="flex items-end gap-2 rounded-2xl px-4 py-2" style={{ background: "var(--panel)", border: "1px solid var(--border)" }}>
           <input ref={fileInputRef} type="file" accept="application/pdf" onChange={handleFileSelect} className="hidden" />
-          <button onClick={() => fileInputRef.current?.click()} className="w-8 h-8 shrink-0 mb-1 rounded-full text-[#8A8580] hover:text-[#C9A44C] flex items-center justify-center"><Paperclip size={16} /></button>
-          <textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKey} placeholder="Ask Sibiya AI..." rows={1} className="flex-1 bg-transparent resize-none outline-none text-[14px] py-2 placeholder:text-[#5C5850] max-h-32" />
-          <button onClick={sendMessage} disabled={loading || (!input.trim() && !pendingFile)} className="w-8 h-8 shrink-0 mb-1 rounded-full bg-[#C9A44C] disabled:bg-[#2A2823] disabled:text-[#5C5850] text-[#0B0B0C] flex items-center justify-center"><Send size={14} /></button>
+          <button onClick={() => fileInputRef.current?.click()} className="w-8 h-8 shrink-0 mb-1 rounded-full flex items-center justify-center" style={{ color: "var(--muted)" }}><Paperclip size={16} /></button>
+          <textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKey} placeholder="Ask Sibiya AI..." rows={1} className="flex-1 bg-transparent resize-none outline-none text-[14px] py-2 max-h-32" style={{ color: "var(--text)" }} />
+          <button onClick={sendMessage} disabled={loading || (!input.trim() && !pendingFile)} className="w-8 h-8 shrink-0 mb-1 rounded-full flex items-center justify-center" style={{ background: "var(--accent)", color: "var(--accent-text)" }}><Send size={14} /></button>
         </div>
         <div className="flex items-center justify-center gap-3 mt-3 text-[10px] tracking-wide">
-          <button onClick={newChat} className="text-[#8A8580] hover:text-[#C9A44C]">New chat</button><span className="text-[#5C5850]">·</span><a href="/privacy.html" className="text-[#8A8580] hover:text-[#C9A44C]">Privacy Policy</a>
+          <button onClick={newChat} style={{ color: "var(--muted)" }}>New chat</button><span style={{ color: "var(--muted)" }}>·</span><a href="/privacy.html" style={{ color: "var(--muted)" }}>Privacy Policy</a>
         </div>
       </div>
     </div>
   );
-    }
+                                                                                                                                                                                                                                                                                                                                                                                                                       }
