@@ -7,11 +7,13 @@ import Quiz from "./Quiz.jsx";
 import Stokvel from "./Stokvel.jsx";
 import Persona, { personaLabel } from "./Persona.jsx";
 import { callTool } from "./toolApi.js";
+import { THEMES, getTheme, setTheme } from "./theme.js";
 
 // The ☰ menu. Inside a group it also shows the group tools (pass the `room` details).
 export default function Menu({ room }) {
   const [open, setOpen] = useState(false);
   const [tool, setTool] = useState(null);
+  const [theme, setThemeState] = useState(getTheme);
   const [owner, setOwner] = useState(false);
   const asked = useRef(false);
 
@@ -99,6 +101,28 @@ export default function Menu({ room }) {
                 🔑 Owner mode: your master key is active
               </div>
             )}
+
+            <div className="text-[10px] uppercase tracking-widest text-[#C9A44C] mb-2">Theme</div>
+            <div className="flex flex-wrap gap-2 mb-4">
+              {THEMES.map(t => (
+                <button
+                  key={t.key}
+                  onClick={() => {
+                    setTheme(t.key);
+                    setThemeState(t.key);
+                  }}
+                  aria-pressed={theme === t.key}
+                  className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] ${
+                    theme === t.key
+                      ? "border-[#C9A44C] bg-[#C9A44C]/10 text-[#F5F1E8] font-semibold"
+                      : "border-[#232019] text-[#D8D2C4] hover:border-[#C9A44C]/50"
+                  }`}
+                >
+                  <span className="w-3 h-3 rounded-full border border-[#8A8580]/40" style={{ background: t.dot }} />
+                  {t.label}
+                </button>
+              ))}
+            </div>
 
             {group.length > 0 && (
               <>
