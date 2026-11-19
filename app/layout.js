@@ -24,6 +24,14 @@ export const metadata = {
     images: ["/og-image.jpg"],
   },
 };
+<script async src="https://www.googletagmanager.com/gtm.js?id=G-VZWQJEKCXN"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+</script>
+  },
+};
 
 export default function RootLayout({ children }) {
   return (
