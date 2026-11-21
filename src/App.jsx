@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Volume2, Paperclip, X } from "lucide-react";
+import { Send, Volume2, Paperclip, X, Pencil, Trash2 } from "lucide-react";
 import { db, getToken } from "./firebase.js";
 import { deleteDoc, doc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
 import MessageText, { speechText } from "./MessageText.jsx";
@@ -91,6 +91,8 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [voiceOn, setVoiceOn] = useState(true);
   const [pendingFile, setPendingFile] = useState(null);
+  const [editingIndex, setEditingIndex] = useState(null);
+  const [editDraft, setEditDraft] = useState("");
   const [uid, setUid] = useState(null);
   const [historyReady, setHistoryReady] = useState(false);
   const scrollRef = useRef(null);
@@ -211,6 +213,40 @@ export default function App() {
     lastJsonRef.current = "";
     if (uid) {
       clearSaved(uid);
+      deleteDoc(doc(db, "soloChats", uid)).catch(() => {});
+    }
+  }
+
+  function beginEdit(index, message) {
+    if (typeof message.content !== "string") return;
+    setEditingIndex(index);
+    setEditDraft(message.content);
+  }
+
+  function saveEdit(index) {
+    const content = editDraft.trim();
+    if (!content) return;
+    setMessages(current => current.map((message, i) =>
+      i === index ? { ...message, content } : message
+    ));
+    setEditingIndex(null);
+    setEditDraft("");
+  }
+
+  function cancelEdit() {
+    setEditingIndex(null);
+    setEditDraft("");
+  }
+
+  function deleteMessage(index) {
+    if (!window.confirm("Delete this message from your solo chat?")) return;
+    const nextMessages = messages.filter((_, i) => i !== index);
+    setMessages(nextMessages);
+    if (editingIndex === index) cancelEdit();
+    if (uid && toSaved(nextMessages).length < 2) {
+      clearSaved(uid);
+      lastJsonRef.current = JSON.stringify([]);
+      dirtyRef.current = false;
       deleteDoc(doc(db, "soloChats", uid)).catch(() => {});
     }
   }
@@ -372,18 +408,69 @@ export default function App() {
       <div ref={scrollRef} onScroll={onChatScroll} className="flex-1 overflow-y-auto px-5 py-6 space-y-4">
         {messages.map((m, i) => (
           <div key={i} data-i={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"} items-end gap-2`}>
-            <div
-              className={`max-w-[80%] px-4 py-3 rounded-2xl text-[14px] leading-relaxed whitespace-pre-wrap break-words ${
-                m.role === "user"
-                  ? "bg-[#C9A44C] text-[#0B0B0C] rounded-br-sm"
-                  : "bg-[#161514] text-[#F5F1E8] rounded-bl-sm border border-[#232019]"
-              }`}
-            >
-              <MessageText
-                text={typeof m.content === "string" ? m.content : m._display}
-                mine={m.role === "user"}
-                allowFiles={m.role === "assistant"}
-              />
+            <div className={`flex min-w-0 max-w-[88%] flex-col gap-1 ${m.role === "user" ? "items-end" : "items-start"}`}>
+              {editingIndex === i ? (
+                <div className="w-full rounded-2xl border border-[#C9A44C]/60 bg-[#161514] p-3">
+                  <textarea
+                    autoFocus
+                    aria-label={`Edit message ${i + 1}`}
+                    value={editDraft}
+                    maxLength={8000}
+                    rows={3}
+                    onChange={e => setEditDraft(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === "Escape") cancelEdit();
+                    }}
+                    className="w-full resize-y bg-transparent text-[14px] leading-relaxed text-[#F5F1E8] outline-none"
+                  />
+                  <div className="mt-2 flex justify-end gap-2">
+                    <button onClick={cancelEdit} className="rounded-lg px-3 py-1.5 text-[12px] text-[#D8D2C4] hover:bg-[#232019]">
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => saveEdit(i)}
+                      disabled={!editDraft.trim()}
+                      className="rounded-lg bg-[#C9A44C] px-3 py-1.5 text-[12px] font-semibold text-[#0B0B0C] disabled:opacity-50"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className={`max-w-full px-4 py-3 rounded-2xl text-[14px] leading-relaxed whitespace-pre-wrap break-words ${
+                    m.role === "user"
+                      ? "bg-[#C9A44C] text-[#0B0B0C] rounded-br-sm"
+                      : "bg-[#161514] text-[#F5F1E8] rounded-bl-sm border border-[#232019]"
+                  }`}
+                >
+                  <MessageText
+                    text={typeof m.content === "string" ? m.content : m._display}
+                    mine={m.role === "user"}
+                    allowFiles={m.role === "assistant"}
+                  />
+                </div>
+              )}
+              <div className="flex items-center gap-1">
+                {m.role === "user" && typeof m.content === "string" && editingIndex !== i && (
+                  <button
+                    onClick={() => beginEdit(i, m)}
+                    disabled={loading}
+                    aria-label={`Edit message ${i + 1}`}
+                    className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-[#8A8580] hover:bg-[#161514] hover:text-[#C9A44C] disabled:opacity-40"
+                  >
+                    <Pencil size={12} /> Edit
+                  </button>
+                )}
+                <button
+                  onClick={() => deleteMessage(i)}
+                  disabled={loading || (editingIndex !== null && editingIndex !== i)}
+                  aria-label={`Delete message ${i + 1}`}
+                  className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-[#8A8580] hover:bg-[#161514] hover:text-[#E07A66] disabled:opacity-40"
+                >
+                  <Trash2 size={12} /> Delete
+                </button>
+              </div>
             </div>
             {m.role === "assistant" && (
               <button
