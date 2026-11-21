@@ -525,7 +525,7 @@ export default function App() {
           </button>
           {webSearch && (
             <span className="text-[10px] text-[#8A8580]" role="status">
-              Sends your question to a search provider; usage charges may apply.
+              Uses Anthropic web search; usage charges may apply.
             </span>
           )}
         </div>

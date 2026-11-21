@@ -9,9 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.39.0",
+    "@anthropic-ai/sdk": "^1.12.0",
     "@vercel/analytics": "^2.0.1",
-    "ai": "^7.0.179",
     "firebase": "^10.12.2",
     "livekit-client": "^2.5.0",
     "lucide-react": "^0.400.0",
