@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Volume2, Paperclip, X, Pencil, Trash2 } from "lucide-react";
+import { Send, Volume2, Paperclip, X, Pencil, Trash2, Globe } from "lucide-react";
 import { db, getToken } from "./firebase.js";
 import { deleteDoc, doc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
 import MessageText, { speechText } from "./MessageText.jsx";
@@ -90,6 +90,7 @@ export default function App() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [voiceOn, setVoiceOn] = useState(true);
+  const [webSearch, setWebSearch] = useState(false);
   const [pendingFile, setPendingFile] = useState(null);
   const [editingIndex, setEditingIndex] = useState(null);
   const [editDraft, setEditDraft] = useState("");
@@ -293,11 +294,19 @@ export default function App() {
         headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
          body: JSON.stringify({
           messages: newMessages.map(m => ({ role: m.role, content: m.content })),
+          webSearch,
         }),
       });
       if (!response.ok) throw new Error(`API error: ${response.status}`);
       const data = await response.json();
-      const reply = data.content?.find(c => c.type === "text")?.text || "...";
+      const answer = data.content?.find(c => c.type === "text")?.text || "...";
+      const sources = Array.isArray(data.sources)
+        ? data.sources.filter(source => source && typeof source.url === "string" && /^https?:\/\//i.test(source.url)).slice(0, 6)
+        : [];
+      const sourceList = sources.length
+        ? `\n\nSources\n${sources.map(source => `- ${String(source.title || source.url).replace(/\s+/g, " ").slice(0, 180)}: ${source.url}`).join("\n")}`
+        : "";
+      const reply = answer + sourceList;
       setMessages(prev => [...prev, { role: "assistant", content: reply }]);
       speak(speechText(reply), voiceOn);
     } catch (e) {
@@ -498,6 +507,28 @@ export default function App() {
         className="px-5 py-4 border-t border-[#1E1D1A]"
         style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}
       >
+        <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+          <button
+            type="button"
+            onClick={() => setWebSearch(value => !value)}
+            disabled={loading}
+            aria-pressed={webSearch}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition-colors disabled:opacity-50 ${
+              webSearch
+                ? "border-[#C9A44C]/60 bg-[#C9A44C]/10 text-[#C9A44C]"
+                : "border-[#2A2823] text-[#8A8580] hover:border-[#C9A44C]/40 hover:text-[#C9A44C]"
+            }`}
+          >
+            <Globe size={13} />
+            Search web
+            <span className="sr-only">{webSearch ? "enabled" : "disabled"}</span>
+          </button>
+          {webSearch && (
+            <span className="text-[10px] text-[#8A8580]" role="status">
+              Sends your question to a search provider; usage charges may apply.
+            </span>
+          )}
+        </div>
         {pendingFile && (
           <div className="flex items-center gap-2 mb-2 text-[12px] text-[#C9A44C] bg-[#161514] border border-[#232019] rounded-full px-3 py-1.5 w-fit">
             <span>📎 {pendingFile.name}</span>
