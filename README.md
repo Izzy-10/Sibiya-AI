@@ -1,8 +1,39 @@
+<div align="center">
+
+# 🦁 SIBIYA AI
+
+### *Umoya Wesizwe SakwaZulu*
+
+[![Live](https://img.shields.io/badge/LIVE-sibiya--ai.vercel.app-D4AF37?style=for-the-badge&labelColor=0B0B0F)](https://sibiya-ai.vercel.app)
+[![React](https://img.shields.io/badge/React-Vite-D4AF37?style=for-the-badge&labelColor=0B0B0F&logo=react&logoColor=D4AF37)](https://vitejs.dev)
+[![Claude](https://img.shields.io/badge/AI-Claude-D4AF37?style=for-the-badge&labelColor=0B0B0F)](https://www.anthropic.com)
+[![Vercel](https://img.shields.io/badge/Hosted%20on-Vercel-D4AF37?style=for-the-badge&labelColor=0B0B0F&logo=vercel&logoColor=D4AF37)](https://vercel.com)
+
+</div>
+
+## ✨ Features
+
+- 🤖 Solo chat with the AI (Google sign-in)
+- 👥 Group chat, call the AI with `@sibiya`
+- 🗣️ isiZulu in, isiZulu out
+- 🎙️ Voice notes and files
+- 📞 Group voice calls
+- 🛡️ Host and co-host controls
+- 🌙 Dark and gold look
+
+## 📸 Screenshots
+
+| Lobby | Solo chat | Group chat |
+|---|---|---|
+| ![Lobby](docs/screenshots/lobby.png) | ![Solo](docs/screenshots/solo.png) | ![Group](docs/screenshots/group.png) |
+
+---
+
 # How Sibiya AI works
 
 **Umoya Wesizwe SakwaZulu.** Sibiya AI is a chat app made in South Africa, rooted in Zulu culture. You can chat with the AI on your own, or bring friends into a group and call on the AI with `@sibiya`.
 
-Built by Sizwe Sicelimpilo Sibiya, Durban, South Africa.
+Built by Sizwe Sicelimilo Sibiya, Durban, South Africa.
 
 ---
 
